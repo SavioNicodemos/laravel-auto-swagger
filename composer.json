@@ -1,0 +1,44 @@
+{
+    "name": "savionicodemos/auto-swagger",
+    "description": "Swagger docs generator for Laravel api",
+    "type": "library",
+    "keywords": [
+        "laravel",
+        "swagger",
+        "docs",
+        "generator"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Savio Nicodemos",
+            "email": "nicodemosgcosta@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.3 || 8.*",
+        "doctrine/dbal": "*",
+        "phpdocumentor/reflection-docblock": "^5.2"
+    },
+    "require-dev": {
+        "laravel/passport": "^10.0"
+    },
+    "autoload": {
+        "files": [
+            "src/helpers.php"
+        ],
+        "psr-4": {
+            "AutoSwagger\\Docs\\": "src/"
+        }
+    },
+    "suggest": {
+        "ext-yaml": "Required to generate YAML"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AutoSwagger\\Docs\\SwaggerServiceProvider"
+            ]
+        }
+    }
+}
