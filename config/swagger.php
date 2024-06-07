@@ -103,6 +103,28 @@ return [
                 'theme' =>  'purple',
                 'showSidebar' =>  true,
                 'searchHotKey' => 'k',
+            ],
+
+            /**
+             * For more information about the configuration options, see:
+             * https://rapidocweb.com/examples.html
+             */
+            'rapidoc' => [
+                'theme' => 'light',
+                'layout' => 'column',
+                'render-style' => 'focused',
+                'schema-style' => 'tree',
+                'logo-url' => '',
+
+                'show-header' => true,
+                'allow-spec-file-load' => true,
+                'allow-spec-file-download' => true,
+                'allow-spec-url-load' => true,
+
+                'colors' => [
+                    'primary' => '#0f6ab4',
+                    'header' => '', // Only available in dark mode
+                ]
             ]
         ]
     ],

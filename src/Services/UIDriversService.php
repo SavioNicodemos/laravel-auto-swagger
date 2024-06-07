@@ -11,6 +11,7 @@ class UIDriversService
     protected $availableDrivers = [
         'swagger-ui',
         'scalar',
+        'rapidoc'
     ];
 
     protected $defaultDriver = 'swagger-ui';
