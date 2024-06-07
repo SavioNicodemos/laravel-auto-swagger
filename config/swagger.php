@@ -65,6 +65,47 @@ return [
      */
     'generated'                 =>  env('SWAGGER_GENERATE_ALWAYS', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | UI Driver
+    |--------------------------------------------------------------------------
+    |
+    | The UI driver configurations to use for rendering the documentation.
+    |
+    | Supported: "swagger-ui", "scalar"
+    |
+    */
+    'ui' => [
+        'default' => env('SWAGGER_UI_DRIVER', 'swagger-ui'),
+
+        'configs' => [
+            /**
+             * For more information about the configuration options, see:
+             * https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/
+             */
+            'swagger-ui' => [
+                'layout' => "StandaloneLayout",
+                'filter' => true,
+                'deepLinking' => true,
+                'displayRequestDuration' => true,
+                'showExtensions' => true,
+                'showCommonExtensions' => true,
+                'queryConfigEnabled' => true,
+                'persistAuthorization' => true,
+            ],
+
+            /**
+             * For more information about the configuration options, see:
+             * https://github.com/scalar/scalar?tab=readme-ov-file#configuration
+             */
+            'scalar' => [
+                'layout' =>  'modern',
+                'theme' =>  'purple',
+                'showSidebar' =>  true,
+                'searchHotKey' => 'k',
+            ]
+        ]
+    ],
 
     /**
      * Append additional data to ALL routes

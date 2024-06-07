@@ -14,6 +14,7 @@ use AutoSwagger\Docs\Exceptions\ExtensionNotLoaded;
 use Illuminate\Support\Facades\Response as ResponseFacade;
 use AutoSwagger\Docs\Exceptions\InvalidFormatException;
 use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
+use AutoSwagger\Docs\Services\UIDriversService;
 
 /**
  * Class SwaggerController
@@ -29,12 +30,18 @@ class SwaggerController extends BaseController
     protected Repository $configuration;
 
     /**
+     * @var UIDriversService
+     */
+    protected UIDriversService $uiDriversService;
+
+    /**
      * SwaggerController constructor.
      * @param Repository $configuration
      */
-    public function __construct(Repository $configuration)
+    public function __construct(Repository $configuration, UIDriversService $uiDriversService)
     {
         $this->configuration = $configuration;
+        $this->uiDriversService = $uiDriversService;
     }
 
     /**
@@ -76,13 +83,18 @@ class SwaggerController extends BaseController
     public function api(Request $request): Response
     {
         $url = config('app.url');
+
         if (!Str::startsWith($url, 'http://') && !Str::startsWith($url, 'https://')) {
             $schema = swagger_is_connection_secure() ? 'https://' : 'http://';
             $url = $schema . $url;
         }
-        return ResponseFacade::make(view('swagger::index', [
-            'secure'            =>  swagger_is_connection_secure(),
-            'urlToDocs'         =>  $url . config('swagger.path', '/documentation') . '/content'
-        ]), 200);
+
+        return ResponseFacade::make(view(
+            $this->uiDriversService->getViewPath(),
+            [
+                'secure'            =>  swagger_is_connection_secure(),
+                'urlToDocs'         =>  $url . config('swagger.path', '/documentation') . '/content'
+            ]
+        ), 200);
     }
 }
