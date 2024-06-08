@@ -2,12 +2,14 @@
 
 namespace AutoSwagger\Docs\Definitions;
 
+use AutoSwagger\Docs\Helpers\AnnotationsHelper;
+use AutoSwagger\Docs\Helpers\ConversionHelper;
+use AutoSwagger\Docs\Helpers\SwaggerHelper;
 use Doctrine\DBAL\Types\Type;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use ReflectionClass;
@@ -18,11 +20,19 @@ use ReflectionClass;
  */
 class DefinitionGenerator
 {
+    protected AnnotationsHelper $annotationsHelper;
+
     /**
      * array of models
      * @var array
      */
     protected array $models = [];
+
+    /**
+     * array of custom schemas
+     * @var array
+     */
+    protected array $customSchemas = [];
 
 
     /**
@@ -59,8 +69,57 @@ class DefinitionGenerator
             ->diff($ignoredModels)
             ->values()
             ->toArray();
+
+        $this->customSchemas = collect(File::allFiles(config('swagger.schemas')))
+            ->map(function ($item) {
+                /**
+                 * @var object
+                 */
+                $containerInstance = Container::getInstance();
+                $path = $item->getRelativePathName();
+
+                // Get the class namespace
+                $schemasDir = realpath(config('swagger.schemas'));
+                $relativeDir = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $schemasDir);
+                $namespace = str_replace(DIRECTORY_SEPARATOR, '\\', $relativeDir);
+
+                $class = sprintf(
+                    '\%s%s\%s',
+                    $containerInstance->getNamespace(),
+                    $namespace,
+                    strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
+                );
+
+                return $class;
+            })
+            ->filter(function ($class) {
+                $valid = false;
+
+                if (class_exists($class)) {
+                    $reflection = new ReflectionClass($class);
+                    $valid = !$reflection->isAbstract();
+                }
+
+                return $valid;
+            })
+            ->values()
+            ->toArray();
+
+        $this->annotationsHelper = new AnnotationsHelper(
+            array_merge($this->models, $this->customSchemas)
+        );
     }
 
+    /**
+     * Get array of all schemas that was detected in the application
+     */
+    function getDefinedSchemas(): array
+    {
+        return array_merge(
+            $this->models,
+            $this->customSchemas
+        );
+    }
 
     /**
      * Generate definitions information
@@ -68,10 +127,100 @@ class DefinitionGenerator
      */
     function generateSchemas(): array
     {
+        // TODO: Add support for Laravel Resources
+        $modelSchemas = $this->generateSchemasFromModels();
+
+        $customSchemas = $this->generateSchemasFromCustomClasses();
+
+        return array_merge(
+            $modelSchemas,
+            $customSchemas
+        );
+    }
+
+    function generateSchemasFromCustomClasses(): array
+    {
         $schemas = [];
 
-        // TODO: Add support for Laravel Resources and custom Schemas
-        $schemas = array_merge($schemas, $this->generateSchemasFromModels());
+        foreach ($this->customSchemas as $schema) {
+            $obj = new $schema();
+
+            $reflection = new ReflectionClass($obj);
+
+            $properties = [];
+            $required = [];
+
+            $classComment = $reflection->getDocComment();
+
+            $schemaAnnotation = $this->annotationsHelper->getCommentProperties(
+                $classComment,
+                'Schema'
+            );
+
+            $properties = collect($reflection->getProperties())
+                ->mapWithKeys(function ($property) {
+                    $propertyAnnotation = $this->annotationsHelper->getCommentProperties(
+                        $property->getDocComment(),
+                        'Property'
+                    );
+
+                    $meta = $propertyAnnotation['meta'];
+
+                    $data = [
+                        'type' => ConversionHelper::phpTypeToSwaggerType(
+                            $property->getType()?->getName()
+                        ),
+                        'description' => $propertyAnnotation['summary'],
+                    ];
+
+                    $keys = ['type', 'example', 'format', 'description', 'nullable'];
+
+                    foreach ($keys as $key) {
+                        if (isset($meta[$key])) {
+                            $data[$key] = $meta[$key];
+                        }
+                    }
+
+                    if (isset($meta['ref'])) {
+                        [$arrayOfSchemas, $schemaBuilded] =
+                            $this->annotationsHelper->parsedSchemas($meta['ref']);
+
+                        if ($arrayOfSchemas) {
+                            $data['type'] = $arrayOfSchemas['type'];
+                            $data['items'] = $arrayOfSchemas['items'];
+                        } elseif ($schemaBuilded) {
+                            $data['type'] = $schemaBuilded['type'];
+                            $data['properties'] = $schemaBuilded['properties'];
+                            $data['required'] = $schemaBuilded['required'];
+                        } else {
+                            $data['$ref'] = '#/components/schemas/' . $meta['ref'];
+                        }
+                    }
+
+                    SwaggerHelper::addExampleKey($data);
+
+                    return [$property->getName() => $data];
+                })
+                ->toArray();
+
+            $required = collect($schemaAnnotation['meta']['required'] ?? [])
+                ->filter(function ($item) use ($properties) {
+                    return array_key_exists($item, $properties);
+                })
+                ->values()
+                ->toArray();
+
+            $definition = [
+                'type' => 'object',
+                'properties' => (object) $properties,
+            ];
+
+            if (!empty($required)) {
+                $definition['required'] = $required;
+            }
+
+            $schemas[$this->getClassName($obj)] = $definition;
+        }
 
         return $schemas;
     }
@@ -127,7 +276,7 @@ class DefinitionGenerator
                  */
                 $column = $conn->getDoctrineColumn($table, $item);
 
-                $data = $this->convertDBalTypeToSwaggerType(
+                $data = ConversionHelper::DBalTypeToSwaggerType(
                     Type::getTypeRegistry()->lookupName($column->getType())
                 );
 
@@ -147,7 +296,7 @@ class DefinitionGenerator
 
                 $data['nullable'] = !$column->getNotnull();
 
-                $this->addExampleKey($data);
+                SwaggerHelper::addExampleKey($data);
 
                 $properties[$item] = $data;
 
@@ -197,7 +346,7 @@ class DefinitionGenerator
                         ];
                     } else {
                         $data['type'] = $type;
-                        $this->addExampleKey($data);
+                        SwaggerHelper::addExampleKey($data);
                     }
                 }
 
@@ -217,161 +366,19 @@ class DefinitionGenerator
                 $definition['required'] = $required;
             }
 
-            $modelSchemas[$this->getModelName($obj)] = $definition;
+            $modelSchemas[$this->getClassName($obj)] = $definition;
         }
 
         return $modelSchemas;
     }
 
-
     /**
-     * Get array of models
-     * @return array array of models
+     * Get model name
+     * @param object $class
+     * @return string The real class name without namespace
      */
-    function getModels(): array
+    private function getClassName(object $class): string
     {
-        return $this->models;
-    }
-
-
-    private function getModelName($model): string
-    {
-        return last(explode('\\', get_class($model)));
-    }
-
-
-    private function addExampleKey(array &$property): void
-    {
-        if (!Arr::has($property, 'type')) {
-            return;
-        }
-
-        switch ($property['type']) {
-            case 'bigint':
-                Arr::set($property, 'example', rand(1000000000000000000, 9200000000000000000));
-                break;
-            case 'integer':
-                Arr::set($property, 'example', rand(1000000000, 2000000000));
-                break;
-            case 'mediumint':
-                Arr::set($property, 'example', rand(1000000, 8000000));
-                break;
-            case 'smallint':
-                Arr::set($property, 'example', rand(10000, 32767));
-                break;
-            case 'tinyint':
-                Arr::set($property, 'example', rand(100, 127));
-                break;
-            case 'real':
-                Arr::set($property, 'example', 0.5);
-                break;
-            case 'date':
-                Arr::set($property, 'example', date('Y-m-d'));
-                break;
-            case 'time':
-                Arr::set($property, 'example', date('H:i:s'));
-                break;
-            case 'datetime':
-                Arr::set($property, 'example', date('Y-m-d H:i:s'));
-                break;
-            case 'timestamp':
-                Arr::set($property, 'example', date('Y-m-d H:i:s'));
-                break;
-            case 'string':
-                Arr::set($property, 'example', 'string');
-                break;
-            case 'text':
-                Arr::set($property, 'example', 'a long text');
-                break;
-            case 'boolean':
-                Arr::set($property, 'example', rand(0, 1) == 0);
-                break;
-            case 'bigserial':
-            case 'serial':
-            case 'decimal':
-            case 'float':
-            case 'double':
-
-            default:
-                break;
-        }
-    }
-
-    /**
-     * @return array array of with 'type' and 'format' as keys
-     */
-    private function convertDBalTypeToSwaggerType(string $type): array
-    {
-        $lowerType = strtolower($type);
-        switch ($lowerType) {
-            case 'bigint':
-                $property = [
-                    'type' => 'integer',
-                    'format' => 'int64'
-                ];
-                break;
-            case 'year':
-                $property = ['type' => 'integer'];
-                break;
-            case 'float':
-                $property = [
-                    'type' => 'number',
-                    'format' => 'float'
-                ];
-                break;
-            case 'real':
-                $property = [
-                    'type' => 'number',
-                    'format' => 'double'
-                ];
-                break;
-            case 'boolean':
-                $property = ['type' => 'boolean'];
-                break;
-            case 'date':
-                $property = [
-                    'type' => 'string',
-                    'format' => 'date',
-                ];
-                break;
-            case 'timestamp':
-                $property = [
-                    'type' => 'string',
-                    'format' => 'date-time',
-                ];
-                break;
-            case 'blob':
-                $property = [
-                    'type' => 'string',
-                    'format' => 'binary',
-                ];
-                break;
-            case 'datetime':
-            case 'binary':
-            case 'varbinary':
-            case 'bigserial':
-            case 'serial':
-            case 'integer':
-            case 'mediumint':
-            case 'smallint':
-            case 'tinyint':
-            case 'tinyint':
-            case 'decimal':
-            case 'double':
-            case 'time':
-            case 'string':
-            case 'text':
-            case 'char':
-            case 'varchar':
-            case 'enum':
-            case 'set':
-            default:
-                $property = ['type' => 'string'];
-                break;
-        }
-
-        $property['description'] = $type;
-
-        return $property;
+        return last(explode('\\', get_class($class)));
     }
 }

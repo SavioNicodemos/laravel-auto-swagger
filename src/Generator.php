@@ -4,7 +4,6 @@ namespace AutoSwagger\Docs;
 
 use Exception;
 use AutoSwagger\Docs\Exceptions\InvalidDefinitionException;
-use ReflectionClass;
 use ReflectionMethod;
 use ReflectionException;
 use Illuminate\Support\Arr;
@@ -23,6 +22,7 @@ use Laravel\Passport\Http\Middleware\CheckForAnyScope;
 use AutoSwagger\Docs\Definitions\DefinitionGenerator;
 use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
 use AutoSwagger\Docs\Exceptions\SchemaBuilderNotFound;
+use AutoSwagger\Docs\Helpers\AnnotationsHelper;
 
 /**
  * Class Generator
@@ -353,10 +353,7 @@ class Generator
             Arr::set($documentation, 'summary', $parsedComment->getSummary());
             Arr::set($documentation, 'description', (string) $parsedComment->getDescription());
 
-            $hasRequest = $parsedComment->hasTag('Request');
-            $hasResponse = $parsedComment->hasTag('Response');
-
-            if ($hasRequest) {
+            if ($parsedComment->hasTag('Request')) {
                 $firstTag = Arr::first($parsedComment->getTagsByName('Request'));
                 $tagData = $this->parseRawDocumentationTag($firstTag);
                 foreach ($tagData as $row) {
@@ -368,49 +365,51 @@ class Generator
                 }
             }
 
-            if ($hasResponse) {
+            if ($parsedComment->hasTag('Response')) {
                 $responseTags = $parsedComment->getTagsByName('Response');
                 foreach ($responseTags as $rawTag) {
                     $tagData = $this->parseRawDocumentationTag($rawTag);
                     $responseCode = '';
                     foreach ($tagData as $value) {
                         [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $value));
+
+                        if (!in_array($key, ['code', 'description', 'ref'])) {
+                            continue;
+                        }
+
                         if ($key === 'code') {
                             $responseCode = $value;
                             $documentation['responses'][$value] = [
                                 'description'   =>  '',
                             ];
-                        } else if ($key === 'description') {
+                            continue;
+                        }
+
+                        if ($key === 'description') {
                             $documentation['responses'][$responseCode]['description'] = $value;
-                        } else if ($key === 'ref') {
+                            continue;
+                        }
 
-                            $value = str_replace(' ', '', $value);
-                            $matches = [];
+                        if ($key === 'ref') {
+                            $annotationsHelper = new AnnotationsHelper(
+                                $this->definitionGenerator->getDefinedSchemas()
+                            );
 
-                            if (Str::startsWith($value, '[') && Str::endsWith($value, ']')) {
-                                $modelName = trim(Str::replaceFirst('[', '', Str::replaceLast(']', '', $value)));
-                                $ref = $this->toSwaggerModelPath($modelName);
-                                $items = [
-                                    'type' => 'array',
-                                    'items' => [
-                                        'type' => 'object',
-                                        '$ref' => $ref
-                                    ]
-                                ];
-                                $documentation['responses'][$responseCode]['content']['application/json']['schema'] = $items;
-                            } else if (preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,})\))", $value, $matches) === 1) {
-                                $schema = $this->generateCustomResponseSchema(
-                                    $matches[1],
-                                    $matches[2],
-                                    $uri
-                                );
-                                if (\count($schema) > 0) {
-                                    $documentation['responses'][$responseCode]['content']['application/json']['schema'] = $schema;
-                                }
-                            } else {
-                                $ref = $this->toSwaggerModelPath($value);
-                                $documentation['responses'][$responseCode]['content']['application/json']['schema']['$ref'] = $ref;
+                            [$arrayOfSchemas, $schemaBuilded] =
+                                $annotationsHelper->parsedSchemas($value, $uri);
+
+                            if ($arrayOfSchemas !== null || $schemaBuilded !== null) {
+                                $schema = $schemaBuilded ?? $arrayOfSchemas;
+
+                                $documentation['responses'][$responseCode]['content']['application/json']['schema'] = $schema;
+
+                                continue;
                             }
+
+                            $ref = $this->toSwaggerModelPath($value);
+                            $documentation['responses'][$responseCode]['content']['application/json']['schema']['$ref'] = $ref;
+
+                            continue;
                         }
                     }
                 }
@@ -427,38 +426,6 @@ class Generator
         return $documentation;
     }
 
-
-    /**
-     * Read schemas builder config and call the matched one
-     *
-     * @throws SchemaBuilderNotFound
-     * @throws ReflectionException
-     */
-    private function generateCustomResponseSchema(string $operation, string $model, string $uri)
-    {
-        $ref = $this->toSwaggerModelPath($model);
-        $schemaBuilders = $this->fromConfig('schema_builders');
-
-        if (!Arr::has($schemaBuilders, $operation)) {
-            throw new SchemaBuilderNotFound("SchemaBuilder `$operation` not found in `swagger.schema_builders` config file. Problem found trying to generate `$uri`");
-        }
-
-        try {
-            $actionClass = new ReflectionClass($schemaBuilders[$operation]);
-        } catch (Exception $e) {
-            throw new ReflectionException(
-                "The class for the SchemaBuilder `$operation` could not be reached. Please verify the class provided in `swagger.schema_builders` config file."
-            );
-        }
-
-        try {
-            return $actionClass->newInstanceWithoutConstructor()->build($ref, $uri);
-        } catch (Exception $e) {
-            throw new Exception("SchemaBuilder must implements AutoSwagger\Docs\Responses\SchemaBuilder interface");
-        }
-    }
-
-
     /**
      * Turn a model name to swagger path to that model or
      * return the same string if it's already a valide path
@@ -468,7 +435,7 @@ class Generator
     private function toSwaggerModelPath(string $value): string
     {
         if (!Str::startsWith($value, '#/components/schemas/')) {
-            foreach ($this->definitionGenerator->getModels() as $item) {
+            foreach ($this->definitionGenerator->getDefinedSchemas() as $item) {
                 if (Str::endsWith($item, $value)) {
                     return "#/components/schemas/$value";
                 }
