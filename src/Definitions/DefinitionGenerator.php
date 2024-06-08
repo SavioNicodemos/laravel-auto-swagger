@@ -294,13 +294,13 @@ class DefinitionGenerator
                     $data['default'] = $default;
                 }
 
-                $data['nullable'] = !$column->getNotnull();
+                $data['nullable'] = !$column->getNotNull();
 
                 SwaggerHelper::addExampleKey($data);
 
                 $properties[$item] = $data;
 
-                if ($column->getNotnull()) {
+                if ($column->getNotNull()) {
                     $required[] = $item;
                 }
             }
@@ -325,12 +325,12 @@ class DefinitionGenerator
             }
 
             foreach ($appends->getValue($obj) as $item) {
-                $methodeName = 'get' . ucfirst(Str::camel($item)) . 'Attribute';
-                if (!$reflection->hasMethod($methodeName)) {
-                    Log::warning("[AutoSwagger\Docs] Method $model::$methodeName not found while parsing '$item' attribute");
+                $methodName = 'get' . ucfirst(Str::camel($item)) . 'Attribute';
+                if (!$reflection->hasMethod($methodName)) {
+                    Log::warning("[AutoSwagger\Docs] Method $model::$methodName not found while parsing '$item' attribute");
                     continue;
                 }
-                $reflectionMethod = $reflection->getMethod($methodeName);
+                $reflectionMethod = $reflection->getMethod($methodName);
                 $returnType = $reflectionMethod->getReturnType();
 
                 $data = [];

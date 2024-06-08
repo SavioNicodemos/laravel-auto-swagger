@@ -7,63 +7,68 @@ return [
      * if you set false, this will
      * only hide swagger's route
      */
-    'enable'                    => env('SWAGGER_ENABLE', true),
+    'enable' => env('SWAGGER_ENABLE', true),
 
     /**
      * API Title
      */
-    'title'                     =>  env('APP_NAME', 'Application API Documentation'),
+    'title' => env('APP_NAME', 'Application API Documentation'),
 
     /**
      * API Description
      */
-    'description'               =>  env('APP_DESCRIPTION', 'Documentation for the Application API'),
+    'description' => env('APP_DESCRIPTION', 'Documentation for the Application API'),
 
     /**
      * API Version
      */
-    'version'                   =>  env('APP_VERSION', '1.0.0'),
+    'version' => env('APP_VERSION', '1.0.0'),
 
     /**
      * API Host
      */
-    'host'                      =>  env('APP_URL'),
+    'host' => env('APP_URL'),
 
     /**
      * API Base path
      */
-    'api_base_path'             => env('SWAGGER_API_BASE_PATH', '/api'),
+    'api_base_path' => env('SWAGGER_API_BASE_PATH', '/api'),
 
     /**
      * API Path
      */
-    'path'                      =>  env('SWAGGER_PATH', '/docs'),
+    'path' => env('SWAGGER_PATH', '/docs'),
 
     /**
      * API Storage Path
      */
-    'storage'                   =>  env('SWAGGER_STORAGE', storage_path('swagger')),
+    'storage' => env('SWAGGER_STORAGE', storage_path('swagger')),
 
     /**
      * API Views Path
      */
-    'views'                     =>  base_path('resources/views/vendor/swagger'),
+    'views' => base_path('resources/views/vendor/swagger'),
 
     /**
      * API Translations Path
      */
-    'translations'              =>  base_path('resources/lang/vendor/swagger'),
+    'translations' => base_path('resources/lang/vendor/swagger'),
+
+    /**
+     * Custom Schemas Path
+     */
+    'schemas' => app_path('Docs/Schemas'),
 
     /**
      * Servers list
      * ['https://server.name.org'] OR [ [ "url" => "", "description" => "" ] ]
      */
-    'servers'                   =>  env('APP_URL', false) ? [env('APP_URL') . env('SWAGGER_API_BASE_PATH', '/api')] : [],
+    'servers' => env('APP_URL', false) ? [env('APP_URL') . env('SWAGGER_API_BASE_PATH', '/api')] : [],
 
     /**
      * Always generate schema when accessing Swagger UI
      */
-    'generated'                 =>  env('SWAGGER_GENERATE_ALWAYS', true),
+    'generated' => env('SWAGGER_GENERATE_ALWAYS', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -99,9 +104,9 @@ return [
              * https://github.com/scalar/scalar?tab=readme-ov-file#configuration
              */
             'scalar' => [
-                'layout' =>  'modern',
-                'theme' =>  'purple',
-                'showSidebar' =>  true,
+                'layout' => 'modern',
+                'theme' => 'purple',
+                'showSidebar' => true,
                 'searchHotKey' => 'k',
             ],
 
@@ -132,10 +137,10 @@ return [
     /**
      * Append additional data to ALL routes
      */
-    'append'                    =>  [
-        'responses'             =>  [
-            '401'               =>  [
-                'description'   =>  '(Unauthorized) Invalid or missing Access Token'
+    'append' => [
+        'responses' => [
+            '401' => [
+                'description' => '(Unauthorized) Invalid or missing Access Token'
             ]
         ]
     ],
@@ -182,42 +187,42 @@ return [
     /**
      * Tags
      */
-    'tags'                      =>  [
+    'tags' => [
         //        [
-        //            'name'          =>  'Authentication',
-        //            'description'   =>  'Routes related to Authentication'
+        //            'name' => 'Authentication',
+        //            'description' => 'Routes related to Authentication'
         //        ],
     ],
 
     /**
-     * Specifie the default tag generation strategy.
+     * Specifies the default tag generation strategy.
      * It can be 'prefix' (using the first non null part of uri splitted with /)
      * or 'controller' (using the controller name translated from camel case to words)
      * or other else to leave all operation in a one default tag
      */
-    'default_tags_generation_strategy' =>  env('SWAGGER_DEFAULT_TAGS_GENERATION_STRATEGY', 'prefix'),
+    'default_tags_generation_strategy' => env('SWAGGER_DEFAULT_TAGS_GENERATION_STRATEGY', 'prefix'),
 
     /**
      * Parsing strategy
      */
-    'parse'                     =>  [
-        'docBlock'              =>  true,
-        'security'              =>  true,
+    'parse' => [
+        'docBlock' => true,
+        'security' => true,
     ],
 
     /**
      * Authentication flow values
      */
-    'authentication_flow'       =>  [
-        //'OAuth2'                =>  'authorizationCode',
-        'bearerAuth'            =>  'http',
+    'authentication_flow' => [
+        //'OAuth2' => 'authorizationCode',
+        'bearerAuth' => 'http',
     ],
 
     /**
      * List here your security middlewares
      * The paths under these middlewares will be protected
      */
-    'security_middlewares'      =>  [
+    'security_middlewares' => [
         'auth:api',
         'auth:sanctum',
     ],
@@ -228,7 +233,7 @@ return [
      * You can implement your own schema builder, see example in this existing implementation
      * Note that Schema builder must implement AutoSwagger\Docs\Responses\SchemaBuilder
      */
-    'schema_builders'            => [
+    'schema_builders' => [
         'P' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelPaginateSchemaBuilder::class,
         'SP' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelSimplePaginateSchemaBuilder::class,
     ]

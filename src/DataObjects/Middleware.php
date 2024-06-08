@@ -12,7 +12,7 @@ class Middleware
 {
 
     /**
-     * Middleware origal string
+     * Middleware original string
      * @var string
      */
     private string $original;
