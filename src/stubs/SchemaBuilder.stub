@@ -1,11 +1,11 @@
 <?php
 
-namespace DummyNamespace;
+namespace {{ namespace }};
 
 use Illuminate\Support\Str;
 use AutoSwagger\Docs\Responses\SchemaBuilder;
 
-class DummyClass implements SchemaBuilder
+class {{ class }} implements SchemaBuilder
 {
 
     /**
@@ -14,9 +14,10 @@ class DummyClass implements SchemaBuilder
      *
      * @param string $modelRef a model swagger ref, (ex: #/components/schemas/User)
      * @param string $uri a current parsing uri
-     * @return array an associative array representing the swagger schema for this resposne
+     * @return array an associative array representing the swagger schema for this response
      */
-    public function build(string $modelRef, string $uri): array {
+    public function build(string $modelRef, string $uri): array
+    {
         if (!Str::startsWith($uri, '/')) {
             $uri = '/' . $uri;
         }

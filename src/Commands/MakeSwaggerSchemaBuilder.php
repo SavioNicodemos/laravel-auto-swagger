@@ -17,7 +17,7 @@ class MakeSwaggerSchemaBuilder extends GeneratorCommand
      *
      * @var string
      */
-    protected $name = 'swagger:make-schema-builder';
+    protected $name = 'make:schema-builder';
 
     /**
      * The console command description.
