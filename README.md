@@ -9,12 +9,14 @@ This package is heavily inspired by the [darki73/laravel-swagger](https://github
 Usage is pretty similar to the [mtrajano/laravel-swagger](https://github.com/mtrajano/laravel-swagger) with the difference being:
 
 1. OAS3 support
-2. Custom decorators
-3. Custom responses
-4. Automatic generation (assuming relevant configuration option is turned on)
-5. Inclusion of Swagger UI
-6. Models generations
-7. Generate operation tags based on route prefix or controller's name
+1. Custom decorators
+1. Custom responses
+1. Custom Schemas
+1. Custom Schema builders
+1. Automatic Parameters generation based on path and Form Request classes
+1. Inclusion of Swagger UI with option to select between different UI drivers
+1. Automatic Schema generations by Models or custom Schema classes.
+1. Generate operation tags based on route prefix or controller's name
 
 ## Installation
 
@@ -49,8 +51,34 @@ You can also configure your swagger.php file to always generate schema when acce
 By default, laravel-swagger prints out the documentation in json format, if you want it in YAML format you can override the format using the `--format` flag. Make sure to have the yaml extension installed if you choose to do so.
 
 Format options are:
-`json`
-`yaml`
+
+- `json`
+- `yaml`
+
+### Annotations syntax
+
+The annotations are written in the PHPDoc block of your controller methods. The syntax is as follows:
+
+```php
+/**
+ * @Request({
+ *    summary: Title of the route,
+ *    description: This is a longer description for the route which will be visible once the panel is expanded,
+ *    tags: [Authentication,Users]
+ * })
+ * 
+ */
+```
+
+In the syntax is very similar to JSON but without the need to use quotes.
+
+#### Rules
+
+- The `key: value` pairs must be separated by a column `:`
+- The `key: value` pairs must be always in the same line. If you want a longer description,
+you can write it in the comment itself that this description will be used as the description
+of the route. You can see the example in the `@Request()` decorator.
+- When you need to use an array, you can use the square brackets `[]` to define it as in JSON.
 
 ### @Request() decorator
 
@@ -63,9 +91,9 @@ You can have only one `@Request()` decorator.
 * And anything 1 * apart from the "summary" will count as "description"
 *
 * @Request({
-*     summary: Title of the route,
-*     description: This is a longer description for the route which will be visible once the panel is expanded,
-*     tags: Authentication,Users
+*     summary: Title of the route, // <- If you add here, this will overwrite the summary from above.
+*     description: A short description, // <- If you need a longer one, just use the comment itself
+*     tags: [Authentication,Users] // <- This Request will be used in this two tags section
 * })
 */
 public function someMethod(Request $request) {}
@@ -75,9 +103,9 @@ public function someMethod(Request $request) {}
 
 You can have multiple `@Response` decorators
 
-- The `code` property is required and must be the first in propery
-- You can use the optional `description` property to desscribe your response
-- You can use the optional `ref` property to refer a model, you can also wrap that model in [] to refer an array of that model or use the full model path inside, finally you can use a schema builder
+- The `code` property is required and must be the first in property
+- You can use the optional `description` property to describe your response
+- You can use the optional `ref` property to refer a Model or a custom Schema, you can also add an `[]` in the final of the Schema name to refer an array of that Schema or use the full Schema path inside, finally you can use a schema builder
 
 ```php
 /**
@@ -89,7 +117,7 @@ You can have multiple `@Response` decorators
 * @Response({
 *     code: 400
 *     description: Bad Request, array of APIError model
-*     ref: [APIError]
+*     ref: APIError[] // <- An Array of APIError, can be a custom Schema
 * })
 * @Response({
 *     code: 302
@@ -109,7 +137,7 @@ public function someMethod(Request $request) {}
  * @Response({
  *     code: 200
  *     description: direct user model reference
- *     ref: #/components/schemas/User
+ *     ref: #/components/schemas/User // <- Full Schema path
  * })
  */
 public function someMethod2(Request $request) {}
@@ -120,7 +148,7 @@ public function someMethod2(Request $request) {}
  * @Response({
  *     code: 200
  *     description: a laravel pagination instance with User model
- *     ref: P(User)
+ *     ref: P(User) // <- Using Schema Builder
  * })
  */
 public function someMethod3(Request $request) {}
