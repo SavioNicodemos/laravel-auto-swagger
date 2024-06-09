@@ -70,9 +70,19 @@ class BodyParametersGenerator implements ParametersGenerator
         Arr::set($schema, 'properties', $properties);
 
         $mediaType = 'application/json'; // or  "application/x-www-form-urlencoded"
-        foreach ($properties as $prop) {
+        foreach ($properties as $propKey => $prop) {
             if (isset($prop['format']) && $prop['format'] == 'binary') {
                 $mediaType = 'multipart/form-data';
+                $schema['type'] = 'object';
+            }
+            if (isset($prop['items']) && is_array($prop['items'])) {
+                foreach ($prop['items'] as $item) {
+                    if (isset($item['format']) && $item['format'] == 'binary') {
+                        $mediaType = 'multipart/form-data';
+                        $schema['properties'][$propKey]['items'] = $item;
+                        $schema['type'] = 'object';
+                    }
+                }
             }
         }
 
