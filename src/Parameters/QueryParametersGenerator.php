@@ -67,7 +67,8 @@ class QueryParametersGenerator implements ParametersGenerator
             ];
 
             if (\count($enums) > 0) {
-                Arr::set($parameterObject, 'enum', $enums);
+                Arr::set($parameterObject, 'schema.type', $type);
+                Arr::set($parameterObject, 'schema.enum', $enums);
             } else {
                 Arr::set($parameterObject, 'schema.type', $type);
             }
@@ -93,8 +94,20 @@ class QueryParametersGenerator implements ParametersGenerator
             Arr::set($parameters, $parameter, $parameterObject);
         }
 
-        $parameters = $this->addArrayTypes($parameters, $arrayTypes);
-        return array_values($parameters);
+        $parameters = array_values($this->addArrayTypes($parameters, $arrayTypes));
+
+        foreach ($parameters as $key => $parameter) {
+            if (isset($parameter['schema']) && isset($parameter['items'])) {
+                $parameter['schema']['items'] = $parameter['items'];
+
+                unset($parameter['type']);
+                unset($parameter['items']);
+
+                $parameters[$key] = $parameter;
+            }
+        }
+
+        return $parameters;
     }
 
     /**
