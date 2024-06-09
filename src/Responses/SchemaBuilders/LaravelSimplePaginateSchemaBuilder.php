@@ -37,7 +37,6 @@ class LaravelSimplePaginateSchemaBuilder implements SchemaBuilder
                 "data" => [
                     'type' => 'array',
                     'items' => [
-                        'type' => 'object',
                         '$ref' => $modelRef
                     ]
                 ],

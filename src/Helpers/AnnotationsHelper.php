@@ -99,7 +99,6 @@ class AnnotationsHelper
             $items = [
                 'type' => 'array',
                 'items' => [
-                    'type' => 'object',
                     '$ref' => $ref
                 ]
             ];
