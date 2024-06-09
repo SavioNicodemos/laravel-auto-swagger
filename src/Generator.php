@@ -117,6 +117,7 @@ class Generator
             }
 
             $uri = Str::replaceFirst($basePath, '', $route->uri());
+            if ($uri === '') $uri = '/';
             $pathKey = 'paths.' . $uri;
 
             if (!Arr::has($documentation, $pathKey)) {
@@ -481,11 +482,6 @@ class Generator
     private function addActionsParameters(array &$information, DataObjects\Route $route, string $method, ?ReflectionMethod $actionInstance): void
     {
         $rules = $this->retrieveFormRules($actionInstance) ?: [];
-        // if (\count($rules) > 0) {
-        //     dump($method);
-        //     dump($route->originalUri());
-        //     dump($rules);
-        // }
         $parameters = (new Parameters\PathParametersGenerator($route->originalUri()))->getParameters();
         $requestBody = [];
 
