@@ -173,12 +173,16 @@ class DefinitionGenerator
                         'description' => $propertyAnnotation['summary'],
                     ];
 
-                    $keys = ['type', 'example', 'format', 'description', 'nullable'];
+                    $keys = ['type', 'example', 'format', 'description'];
 
                     foreach ($keys as $key) {
                         if (isset($meta[$key])) {
                             $data[$key] = $meta[$key];
                         }
+                    }
+
+                    if (isset($meta['nullable'])) {
+                        $data['nullable'] = $meta['nullable'] === 'true';
                     }
 
                     if (isset($meta['ref'])) {
@@ -193,6 +197,7 @@ class DefinitionGenerator
                             $data['properties'] = $schemaBuilded['properties'];
                             $data['required'] = $schemaBuilded['required'];
                         } else {
+                            $data = []; // We need to reset the data when add $ref
                             $data['$ref'] = '#/components/schemas/' . $meta['ref'];
                         }
                     }
@@ -308,7 +313,6 @@ class DefinitionGenerator
             foreach ($relations as $relationName) {
                 $relatedClass = get_class($obj->{$relationName}()->getRelated());
                 $refObject = [
-                    'type' => 'object',
                     '$ref' => '#/components/schemas/' . last(explode('\\', $relatedClass)),
                 ];
 
@@ -341,7 +345,6 @@ class DefinitionGenerator
 
                     if (Str::contains($type, '\\')) {
                         $data = [
-                            'type' => 'object',
                             '$ref' => '#/components/schemas/' . last(explode('\\', $type)),
                         ];
                     } else {
