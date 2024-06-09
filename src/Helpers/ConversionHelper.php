@@ -41,7 +41,7 @@ class ConversionHelper
             'string' => ['type' => 'string'],
             'text' => ['type' => 'string'],
             'guid' => ['type' => 'string'],
-            'binary' => ['type' => 'string', 'format' => 'binary'],
+            'binary' => ['type' => 'object', 'format' => 'binary'],
             'datetime' => ['type' => 'string', 'format' => 'date-time'],
             'datetimetz' => ['type' => 'string', 'format' => 'date-time'],
             'time' => ['type' => 'string', 'format' => 'time'],
@@ -56,7 +56,7 @@ class ConversionHelper
             'boolean' => ['type' => 'boolean'],
             'date' => ['type' => 'string', 'format' => 'date'],
             'timestamp' => ['type' => 'string', 'format' => 'date-time'],
-            'blob' => ['type' => 'string', 'format' => 'binary'],
+            'blob' => ['type' => 'object', 'format' => 'binary'],
         ];
 
         $property = $typeFormatMap[$lowerType] ?? ['type' => 'string'];
