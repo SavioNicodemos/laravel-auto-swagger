@@ -464,10 +464,38 @@ class Generator
         }
 
         foreach ($this->append['responses'] as $code => $response) {
-            if (!Arr::has($information, 'responses.' . $code)) {
-                Arr::set($information, 'responses.' . $code, $response);
-            }
+            if (Arr::has($information, 'responses.' . $code)) continue;
+
+            $this->addNewAppendResponse($information, $code, $response);
         }
+    }
+
+    private function addNewAppendResponse(array &$information, string $code, array $response): void
+    {
+        $newResponse = [
+            'description' => '',
+        ];
+
+        if (isset($response['ref'])) {
+            $data = [];
+            [$arrayOfSchemas, $schemaBuilded] = $this->annotationsHelper
+                ->parsedSchemas($response['ref']);
+
+            if ($arrayOfSchemas || $schemaBuilded) {
+                $data = $schemaBuilded ?? $arrayOfSchemas;
+            } else {
+                $data['$ref'] = $this->annotationsHelper
+                    ->toSwaggerSchemaPath($response['ref']);
+            }
+
+            $newResponse['content']['application/json']['schema'] = $data;
+        }
+
+        if (isset($response['description'])) {
+            $newResponse['description'] = $response['description'];
+        }
+
+        Arr::set($information, 'responses.' . $code, $newResponse);
     }
 
     /**

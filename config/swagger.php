@@ -261,7 +261,8 @@ return [
     'append' => [
         'responses' => [
             '401' => [
-                'description' => '(Unauthorized) Invalid or missing Access Token'
+                'description' => '(Unauthorized) Invalid or missing Access Token',
+                //'ref' => 'ExampleErrorSchema' <- You can use a schema reference
             ]
         ]
     ],
