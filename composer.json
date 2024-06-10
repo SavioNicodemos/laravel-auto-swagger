@@ -1,11 +1,13 @@
 {
-    "name": "savionicodemos/auto-swagger",
+    "name": "savionicodemos/laravel-auto-swagger",
     "description": "Swagger docs generator for Laravel api",
     "type": "library",
     "keywords": [
         "laravel",
         "swagger",
         "docs",
+        "auto",
+        "automatic",
         "generator"
     ],
     "license": "MIT",

@@ -5,10 +5,11 @@ Also includes Swagger UI.
 
 ## About
 
-This package is heavily inspired by the [darki73/laravel-swagger](https://github.com/darki73/laravel-swagger) and [kevupton/laravel-swagger](https://github.com/kevupton/laravel-swagger).  
-Usage is pretty similar to the [mtrajano/laravel-swagger](https://github.com/mtrajano/laravel-swagger) with the difference being:
+This package is heavily inspired by the [Mezatsong/laravel-swagger-docs](https://github.com/Mezatsong/laravel-swagger-docs).
 
-1. OAS3 support
+The set of functions that this package has are included:
+
+1. OAS3 support (with constant verifications to ensure syntax and compatibility)
 1. Custom decorators
 1. Custom responses
 1. Custom Schemas
@@ -23,7 +24,7 @@ Usage is pretty similar to the [mtrajano/laravel-swagger](https://github.com/mtr
 ### Install package through composer
 
 ```shell
-composer require savionicodemos/auto-swagger --dev
+composer require savionicodemos/laravel-auto-swagger --dev
 ```
 
 ### Publish configuration files and views
