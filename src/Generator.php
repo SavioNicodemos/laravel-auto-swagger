@@ -361,7 +361,7 @@ class Generator
             if ($parsedComment->hasTag('Request')) {
                 $firstTag = Arr::first($parsedComment->getTagsByName('Request'));
                 $tagData = $this->annotationsHelper->parseRawDocumentationTag($firstTag);
-                foreach ($tagData as $row) {
+                foreach ($tagData as $key => $value) {
                     [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $row));
                     if ($key === 'tags') {
                         $value = array_map(fn (string $string) => trim($string), explode(',', $value));
@@ -375,9 +375,7 @@ class Generator
                 foreach ($responseTags as $rawTag) {
                     $tagData = $this->annotationsHelper->parseRawDocumentationTag($rawTag);
                     $responseCode = '';
-                    foreach ($tagData as $value) {
-                        [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $value));
-
+                    foreach ($tagData as $key => $value) {
                         if (!in_array($key, ['code', 'description', 'ref'])) {
                             continue;
                         }
