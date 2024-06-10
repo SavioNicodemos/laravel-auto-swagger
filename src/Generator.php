@@ -362,9 +362,9 @@ class Generator
                 $firstTag = Arr::first($parsedComment->getTagsByName('Request'));
                 $tagData = $this->annotationsHelper->parseRawDocumentationTag($firstTag);
                 foreach ($tagData as $key => $value) {
-                    [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $row));
-                    if ($key === 'tags') {
-                        $value = array_map(fn (string $string) => trim($string), explode(',', $value));
+                    if ($key === 'operationId') {
+                        $documentation['operationId'] = $value;
+                        continue;
                     }
                     Arr::set($documentation, $key, $value);
                 }
