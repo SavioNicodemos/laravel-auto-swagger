@@ -38,11 +38,9 @@ class SwaggerServiceProvider extends ServiceProvider
 
         $viewsPath = __DIR__ . '/../resources/views';
         $this->loadViewsFrom($viewsPath, 'swagger');
-        $translationsPath = __DIR__ . '/../resources/lang';
 
         $this->publishes([
             $viewsPath => config('swagger.views', base_path('resources/views/vendor/swagger')),
-            $translationsPath => config('swagger.translations', base_path('resources/lang/vendor/swagger'))
         ]);
 
         $this->loadRoutesFrom(__DIR__ . DIRECTORY_SEPARATOR . 'routes.php');
