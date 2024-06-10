@@ -77,6 +77,8 @@ class Generator
      */
     protected array $append;
 
+    protected AnnotationsHelper $annotationsHelper;
+
     /**
      * Generator constructor.
      * @param Repository $config
@@ -90,6 +92,8 @@ class Generator
         $this->hasSecurityDefinitions = false;
         $this->ignored = $this->fromConfig('ignored', []);
         $this->append = $this->fromConfig('append', []);
+
+        $this->annotationsHelper = new AnnotationsHelper();
     }
 
     /**
@@ -356,7 +360,7 @@ class Generator
 
             if ($parsedComment->hasTag('Request')) {
                 $firstTag = Arr::first($parsedComment->getTagsByName('Request'));
-                $tagData = $this->parseRawDocumentationTag($firstTag);
+                $tagData = $this->annotationsHelper->parseRawDocumentationTag($firstTag);
                 foreach ($tagData as $row) {
                     [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $row));
                     if ($key === 'tags') {
@@ -369,7 +373,7 @@ class Generator
             if ($parsedComment->hasTag('Response')) {
                 $responseTags = $parsedComment->getTagsByName('Response');
                 foreach ($responseTags as $rawTag) {
-                    $tagData = $this->parseRawDocumentationTag($rawTag);
+                    $tagData = $this->annotationsHelper->parseRawDocumentationTag($rawTag);
                     $responseCode = '';
                     foreach ($tagData as $value) {
                         [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $value));
@@ -392,12 +396,8 @@ class Generator
                         }
 
                         if ($key === 'ref') {
-                            $annotationsHelper = new AnnotationsHelper(
-                                $this->definitionGenerator->getDefinedSchemas()
-                            );
-
                             [$arrayOfSchemas, $schemaBuilded] =
-                                $annotationsHelper->parsedSchemas($value, $uri);
+                                $this->annotationsHelper->parsedSchemas($value, $uri);
 
                             if ($arrayOfSchemas !== null || $schemaBuilded !== null) {
                                 $schema = $schemaBuilded ?? $arrayOfSchemas;
@@ -600,23 +600,6 @@ class Generator
     {
         $middlewareMap = app('router')->getMiddleware();
         return $middlewareMap[$middleware] ?? null;
-    }
-
-    /**
-     * Parse raw documentation tag
-     * @param Generic|Tag $rawTag
-     * @return array
-     */
-    private function parseRawDocumentationTag($rawTag): array
-    {
-        return Str::of((string) $rawTag)
-            ->replace('({', '')
-            ->replace('})', '')
-            ->replace(["\r\n", "\n\r", "\r", PHP_EOL], "\n")
-            ->explode("\n")
-            ->filter(fn (string $value) => strlen($value) > 1)
-            ->map(fn (string $value) => rtrim(trim($value), ','))
-            ->toArray();
     }
 
     /**

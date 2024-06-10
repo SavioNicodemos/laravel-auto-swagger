@@ -13,13 +13,6 @@ use ReflectionClass;
 
 class AnnotationsHelper
 {
-    private $definedSchemas;
-
-    public function __construct(array $schemas = [])
-    {
-        $this->definedSchemas = $schemas;
-    }
-
     /**
      * Parse raw documentation tag
      * @param Generic|Tag $rawTag
@@ -139,14 +132,10 @@ class AnnotationsHelper
      * @param string $value
      * @return string
      */
-    private function toSwaggerSchemaPath(string $value): string
+    public function toSwaggerSchemaPath(string $value): string
     {
         if (!Str::startsWith($value, '#/components/schemas/')) {
-            foreach ($this->definedSchemas as $item) {
-                if (Str::endsWith($item, $value)) {
-                    return "#/components/schemas/$value";
-                }
-            }
+            return "#/components/schemas/$value";
         }
 
         return $value;

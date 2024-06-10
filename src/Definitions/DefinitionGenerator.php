@@ -105,9 +105,7 @@ class DefinitionGenerator
             ->values()
             ->toArray();
 
-        $this->annotationsHelper = new AnnotationsHelper(
-            array_merge($this->models, $this->customSchemas)
-        );
+        $this->annotationsHelper = new AnnotationsHelper();
     }
 
     /**
