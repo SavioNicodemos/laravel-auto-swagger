@@ -42,35 +42,35 @@ class DefinitionGenerator
     public function __construct(array $ignoredModels = [])
     {
         if (!ConfigHelper::shouldIgnoreAllModels()) {
-        $this->models = collect(File::allFiles(app_path()))
-            ->map(function ($item) {
-                /**
-                 * @var object
-                 */
-                $containerInstance = Container::getInstance();
-                $path = $item->getRelativePathName();
-                $class = sprintf(
-                    '\%s%s',
-                    $containerInstance->getNamespace(),
-                    strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
-                );
+            $this->models = collect(File::allFiles(app_path()))
+                ->map(function ($item) {
+                    /**
+                     * @var object
+                     */
+                    $containerInstance = Container::getInstance();
+                    $path = $item->getRelativePathName();
+                    $class = sprintf(
+                        '\%s%s',
+                        $containerInstance->getNamespace(),
+                        strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
+                    );
 
-                return $class;
-            })
-            ->filter(function ($class) {
-                $valid = false;
+                    return $class;
+                })
+                ->filter(function ($class) {
+                    $valid = false;
 
-                if (class_exists($class)) {
-                    $reflection = new ReflectionClass($class);
-                    $valid = $reflection->isSubclassOf(Model::class) &&
-                        !$reflection->isAbstract();
-                }
+                    if (class_exists($class)) {
+                        $reflection = new ReflectionClass($class);
+                        $valid = $reflection->isSubclassOf(Model::class) &&
+                            !$reflection->isAbstract();
+                    }
 
-                return $valid;
-            })
-            ->diff($ignoredModels)
-            ->values()
-            ->toArray();
+                    return $valid;
+                })
+                ->diff($ignoredModels)
+                ->values()
+                ->toArray();
         }
 
         if (is_dir(config('swagger.schemas'))) {
