@@ -70,40 +70,42 @@ class DefinitionGenerator
             ->values()
             ->toArray();
 
-        $this->customSchemas = collect(File::allFiles(config('swagger.schemas')))
-            ->map(function ($item) {
-                /**
-                 * @var object
-                 */
-                $containerInstance = Container::getInstance();
-                $path = $item->getRelativePathName();
+        if (is_dir(config('swagger.schemas'))) {
+            $this->customSchemas = collect(File::allFiles(config('swagger.schemas')))
+                ->map(function ($item) {
+                    /**
+                     * @var object
+                     */
+                    $containerInstance = Container::getInstance();
+                    $path = $item->getRelativePathName();
 
-                // Get the class namespace
-                $schemasDir = realpath(config('swagger.schemas'));
-                $relativeDir = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $schemasDir);
-                $namespace = str_replace(DIRECTORY_SEPARATOR, '\\', $relativeDir);
+                    // Get the class namespace
+                    $schemasDir = realpath(config('swagger.schemas'));
+                    $relativeDir = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $schemasDir);
+                    $namespace = str_replace(DIRECTORY_SEPARATOR, '\\', $relativeDir);
 
-                $class = sprintf(
-                    '\%s%s\%s',
-                    $containerInstance->getNamespace(),
-                    $namespace,
-                    strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
-                );
+                    $class = sprintf(
+                        '\%s%s\%s',
+                        $containerInstance->getNamespace(),
+                        $namespace,
+                        strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
+                    );
 
-                return $class;
-            })
-            ->filter(function ($class) {
-                $valid = false;
+                    return $class;
+                })
+                ->filter(function ($class) {
+                    $valid = false;
 
-                if (class_exists($class)) {
-                    $reflection = new ReflectionClass($class);
-                    $valid = !$reflection->isAbstract();
-                }
+                    if (class_exists($class)) {
+                        $reflection = new ReflectionClass($class);
+                        $valid = !$reflection->isAbstract();
+                    }
 
-                return $valid;
-            })
-            ->values()
-            ->toArray();
+                    return $valid;
+                })
+                ->values()
+                ->toArray();
+        }
 
         $this->annotationsHelper = new AnnotationsHelper();
     }
