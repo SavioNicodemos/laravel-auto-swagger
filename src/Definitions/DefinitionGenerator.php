@@ -169,9 +169,11 @@ class DefinitionGenerator
 
                     $meta = $propertyAnnotation['meta'];
 
+                    $propertyType = $property->getType();
+
                     $data = [
                         'type' => ConversionHelper::phpTypeToSwaggerType(
-                            $property->getType()?->getName()
+                            $propertyType ? $propertyType->getName() : 'string'
                         ),
                         'description' => $propertyAnnotation['summary'],
                     ];
