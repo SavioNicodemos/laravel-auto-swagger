@@ -3,6 +3,7 @@
 namespace AutoSwagger\Docs\Definitions;
 
 use AutoSwagger\Docs\Helpers\AnnotationsHelper;
+use AutoSwagger\Docs\Helpers\ConfigHelper;
 use AutoSwagger\Docs\Helpers\ConversionHelper;
 use AutoSwagger\Docs\Helpers\SwaggerHelper;
 use Doctrine\DBAL\Types\Type;
@@ -40,6 +41,7 @@ class DefinitionGenerator
      */
     public function __construct(array $ignoredModels = [])
     {
+        if (!ConfigHelper::shouldIgnoreAllModels()) {
         $this->models = collect(File::allFiles(app_path()))
             ->map(function ($item) {
                 /**
@@ -69,6 +71,7 @@ class DefinitionGenerator
             ->diff($ignoredModels)
             ->values()
             ->toArray();
+        }
 
         if (is_dir(config('swagger.schemas'))) {
             $this->customSchemas = collect(File::allFiles(config('swagger.schemas')))

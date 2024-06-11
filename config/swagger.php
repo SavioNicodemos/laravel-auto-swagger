@@ -308,7 +308,9 @@ return [
             env('SWAGGER_PATH', '/docs') . '/content'
         ],
 
-        'models' => []
+        'models' => [
+            // '*' // <- If add as first element, will ignore all Models
+        ]
     ],
 
     /*
