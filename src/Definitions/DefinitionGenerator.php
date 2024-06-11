@@ -264,7 +264,15 @@ class DefinitionGenerator
                 ->all();
 
             $table = $obj->getTable();
-            $list = Schema::connection($obj->getConnectionName())->getColumnListing($table);
+            try {
+                $list = Schema::connection($obj->getConnectionName())
+                    ->getColumnListing($table);
+            } catch (\Exception $e) {
+                $message = "[AutoSwagger\Docs] Table $table not found while parsing $model";
+                Log::warning($message);
+                dump($message);
+                continue;
+            }
             $list = array_diff($list, $obj->getHidden());
 
             $properties = [];
@@ -281,10 +289,17 @@ class DefinitionGenerator
             }
 
             foreach ($list as $item) {
-                /**
-                 * @var \Doctrine\DBAL\Schema\Column
-                 */
-                $column = $conn->getDoctrineColumn($table, $item);
+                try {
+                    /**
+                     * @var \Doctrine\DBAL\Schema\Column
+                     */
+                    $column = $conn->getDoctrineColumn($table, $item);
+                } catch (\Exception $e) {
+                    $message = "[AutoSwagger\Docs] Column $item not found while parsing $model";
+                    Log::warning($message);
+                    dump($message);
+                    continue;
+                }
 
                 $data = ConversionHelper::DBalTypeToSwaggerType(
                     Type::getTypeRegistry()->lookupName($column->getType())
