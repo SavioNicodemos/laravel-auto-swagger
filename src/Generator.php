@@ -12,12 +12,10 @@ use Illuminate\Routing\Route;
 use Laravel\Passport\Passport;
 use AutoSwagger\Docs\Parameters;
 use AutoSwagger\Docs\DataObjects;
-use phpDocumentor\Reflection\DocBlock\Tag;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Http\FormRequest;
 use phpDocumentor\Reflection\DocBlockFactory;
 use Laravel\Passport\Http\Middleware\CheckScopes;
-use phpDocumentor\Reflection\DocBlock\Tags\Generic;
 use Laravel\Passport\Http\Middleware\CheckForAnyScope;
 use AutoSwagger\Docs\Definitions\DefinitionGenerator;
 use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
@@ -279,7 +277,7 @@ class Generator
 
         $this->addActionsParameters($documentation, $route, $method, $actionMethodInstance);
 
-        $this->addActionsResponses($documentation);
+        $this->addConfigAppendItems($documentation);
 
         if ($this->hasSecurityDefinitions) {
             $this->addActionScopes($documentation, $route);
@@ -446,13 +444,13 @@ class Generator
 
 
     /**
-     * Append action responses
+     * Append items from 'swagger.config'
      * @param array $information
      * @param DataObjects\Route $route
      * @param string $method
      * @param ReflectionMethod|null $actionInstance
      */
-    private function addActionsResponses(array &$information): void
+    private function addConfigAppendItems(array &$information): void
     {
 
         if (\count(Arr::get($information, 'responses')) === 0) {
@@ -468,6 +466,24 @@ class Generator
 
             $this->addNewAppendResponse($information, $code, $response);
         }
+
+        foreach ($this->append['headers'] as $header => $value) {
+            $information['parameters'][] = $this->createHeader($header, $value);
+        }
+    }
+
+    private function createHeader(string $headerName, array $value): array
+    {
+        $newHeader = $value;
+        $newHeader['name'] = $headerName;
+        $newHeader['in'] = 'header';
+        $newHeader['schema'] = [
+            'type' => $value['type'],
+            'default' => $value['example']
+        ];
+        unset($newHeader['type']);
+
+        return $newHeader;
     }
 
     private function addNewAppendResponse(array &$information, string $code, array $response): void

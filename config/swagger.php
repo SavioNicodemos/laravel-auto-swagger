@@ -264,6 +264,14 @@ return [
                 'description' => '(Unauthorized) Invalid or missing Access Token',
                 //'ref' => 'ExampleErrorSchema' <- You can use a schema reference
             ]
+        ],
+        'headers' => [
+            // 'Version' => [
+            //     'required' => true,
+            //     'description' => 'The version of the application',
+            //     'example' => '1.0.0',
+            //     'type' => 'string',
+            // ]
         ]
     ],
 
