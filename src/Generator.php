@@ -85,13 +85,18 @@ class Generator
     public function __construct(Repository $config, ?string $routeFilter = null)
     {
         $this->configuration = $config;
-        $this->routeFilter = $routeFilter ?: $this->fromConfig('api_base_path');
         $this->parser = DocBlockFactory::createInstance();
         $this->hasSecurityDefinitions = false;
         $this->ignored = $this->fromConfig('ignored', []);
         $this->append = $this->fromConfig('append', []);
 
         $this->annotationsHelper = new AnnotationsHelper();
+
+        $apiBasePath = $routeFilter ?: $this->fromConfig('api_base_path');
+        if (is_string($apiBasePath) && Str::endsWith($apiBasePath, '/')) {
+            $apiBasePath = substr($apiBasePath, 0, -1);
+        }
+        $this->routeFilter = $apiBasePath;
     }
 
     /**
@@ -120,6 +125,7 @@ class Generator
 
             $uri = Str::replaceFirst($basePath, '', $route->uri());
             if ($uri === '') $uri = '/';
+            if (!Str::startsWith($uri, '/')) continue;
             $pathKey = 'paths.' . $uri;
 
             if (!Arr::has($documentation, $pathKey)) {
