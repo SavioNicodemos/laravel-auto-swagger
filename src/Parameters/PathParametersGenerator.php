@@ -46,7 +46,7 @@ class PathParametersGenerator implements ParametersGenerator
             $parameters[] = [
                 'name'          =>  strip_optional_char($variable),
                 'in'            =>  $this->getParameterLocation(),
-                'required'      =>  $this->isPathVariableRequired($variable),
+                'required'      =>  true,
                 'description'   =>  '',
                 'schema'        =>  [
                     'type'      =>  'string',
@@ -110,15 +110,5 @@ class PathParametersGenerator implements ParametersGenerator
             return (bool) false;
         }
         return (string) $string;
-    }
-
-    /**
-     * Check whether this is a required variable
-     * @param string $pathVariable
-     * @return bool
-     */
-    private function isPathVariableRequired(string $pathVariable): bool
-    {
-        return !Str::contains($pathVariable, '?');
     }
 }
