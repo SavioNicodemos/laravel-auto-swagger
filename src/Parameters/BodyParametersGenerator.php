@@ -67,6 +67,8 @@ class BodyParametersGenerator implements ParametersGenerator
             Arr::set($schema, 'required', $required);
         }
 
+        $this->cleanUpProperties($properties);
+
         Arr::set($schema, 'properties', $properties);
 
         $mediaType = 'application/json'; // or  "application/x-www-form-urlencoded"
@@ -94,6 +96,33 @@ class BodyParametersGenerator implements ParametersGenerator
                 ]
             ]
         ];
+    }
+
+    /**
+     * Clean up properties
+     * @param array $properties
+     */
+    protected function cleanUpProperties(array &$properties): void
+    {
+        foreach ($properties as $key => $property) {
+            if (!isset($property['items'])) continue;
+
+            if (empty($property['items'])) {
+                $properties[$key]['items'] = [
+                    'type' => 'string'
+                ];
+                continue;
+            }
+
+            if (!Arr::isAssoc($property['items'])) {
+                $properties[$key]['items'] = $property['items'][0];
+                $property['items'] = $property['items'][0];
+            }
+
+            if (isset($property['items']['type']) && $property['items']['type'] === 'object') {
+                $this->cleanUpProperties($properties[$key]['items']['properties']);
+            }
+        }
     }
 
     /**
