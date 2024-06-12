@@ -128,14 +128,14 @@ class DefinitionGenerator
      * Generate definitions information
      * @return array
      */
-    function generateSchemas(): array
+    function generateSchemas(): object
     {
         // TODO: Add support for Laravel Resources
         $modelSchemas = $this->generateSchemasFromModels();
 
         $customSchemas = $this->generateSchemasFromCustomClasses();
 
-        return array_merge(
+        return (object) array_merge(
             $modelSchemas,
             $customSchemas
         );
