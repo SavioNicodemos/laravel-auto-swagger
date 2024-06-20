@@ -559,19 +559,16 @@ class Generator
     private function addActionScopes(array &$information, DataObjects\Route $route)
     {
         foreach ($route->middleware() as $middleware) {
-            if ($this->isSecurityMiddleware($middleware)) {
-                $security = [
-                    '_temp'     =>  $middleware->parameters(),
-                ];
-                foreach ($this->fromConfig('authentication_flow') as $definition => $value) {
-                    $parameters = ($definition === 'OAuth2') ? $middleware->parameters() : [];
-                    $security[$definition] = $parameters;
-                }
-                if (\count(Arr::flatten($security)) > 0) {
-                    unset($security['_temp']);
-                    Arr::set($information, 'security', [$security]);
-                }
+            if (!$this->isSecurityMiddleware($middleware)) continue;
+
+            $security = [];
+
+            foreach ($this->fromConfig('authentication_flow') as $definition => $value) {
+                $parameters = ($definition === 'OAuth2') ? $middleware->parameters() : [];
+                $security[$definition] = $parameters;
             }
+
+            Arr::set($information, 'security', [$security]);
         }
     }
 
