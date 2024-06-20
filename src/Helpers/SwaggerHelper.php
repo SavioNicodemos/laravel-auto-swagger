@@ -6,12 +6,17 @@ use Illuminate\Support\Arr;
 
 class SwaggerHelper
 {
-    /*
-    * Add example key to property based on its type
-    */
+    /**
+     * Add example key to property based on its type
+     */
     public static function addExampleKey(array &$property): void
     {
-        if (!Arr::has($property, 'type') || Arr::has($property, 'example')) {
+        if (!Arr::has($property, 'type')) {
+            return;
+        }
+
+        if (Arr::has($property, 'example')) {
+            self::validateExampleType($property);
             return;
         }
 
@@ -38,6 +43,31 @@ class SwaggerHelper
 
         if (array_key_exists($property['type'], $typeExampleMap)) {
             Arr::set($property, 'example', $typeExampleMap[$property['type']]);
+        }
+    }
+
+    /**
+     * Validate the type of the example
+     */
+    public static function validateExampleType(array &$property)
+    {
+        if (!Arr::has($property, 'type') || !Arr::has($property, 'example')) {
+            return;
+        }
+
+        $phpType = ConversionHelper::swaggerTypeToPhpType($property['type']);
+        $example = $property['example'];
+
+        if (gettype($example) == $phpType) {
+            return;
+        }
+
+        if ($phpType == 'integer') {
+            $property['example'] = (int) $example;
+        } elseif ($phpType == 'boolean') {
+            $property['example'] = strtolower($example) === 'true';
+        } elseif ($phpType == 'number') {
+            $property['example'] = (float) $example;
         }
     }
 }

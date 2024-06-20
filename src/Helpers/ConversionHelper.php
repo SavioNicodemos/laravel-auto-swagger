@@ -27,6 +27,25 @@ class ConversionHelper
         return $types[$type] ?? 'string';
     }
 
+    public static function swaggerTypeToPhpType(?string $type): string
+    {
+        if (empty($type)) {
+            return 'string';
+        }
+
+        $types = [
+            'number' => 'integer',
+            'string' => 'string',
+            'boolean' => 'boolean',
+            'array' => 'array',
+            'integer' => 'integer',
+            'null' => 'null',
+            'object' => 'object',
+        ];
+
+        return $types[$type] ?? 'string';
+    }
+
     /**
      * @return array array with 'type' and 'format' as keys
      */
