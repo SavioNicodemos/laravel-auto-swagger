@@ -49,6 +49,7 @@ class QueryParametersGenerator implements ParametersGenerator
             $enums = $this->getEnumValues($parameterRules);
             $type = $this->getParameterType($parameterRules);
             $default = $this->getDefaultValue($parameterRules);
+            $description = $this->getDescription($parameterRules);
             $min = $this->getMinValue($parameterRules);
             $max = $this->getMaxValue($parameterRules);
 
@@ -62,7 +63,7 @@ class QueryParametersGenerator implements ParametersGenerator
             $parameterObject = [
                 'in'            =>  $this->getParameterLocation(),
                 'name'          =>  $parameter,
-                'description'   =>  '',
+                'description'   =>  $description,
                 'required'      =>  $this->isParameterRequired($parameterRules)
             ];
 

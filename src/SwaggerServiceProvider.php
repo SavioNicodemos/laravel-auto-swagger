@@ -75,6 +75,9 @@ class SwaggerServiceProvider extends ServiceProvider
         Validator::extend('swagger_default', function () {
             return true;
         });
+        Validator::extend('swagger_description', function () {
+            return true;
+        });
         Validator::extend('swagger_min', function ($_, $value, array $parameters) {
             [$min, $fail] = $this->parseParameters($parameters);
             $valueType = $this->getTypeFromString((string) $value);

@@ -195,6 +195,16 @@ trait GeneratesFromRules
         return null;
     }
 
+    protected function getDescription(array $parameterRules): string
+    {
+        foreach ($parameterRules as $rule) {
+            if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_description')) {
+                return trim(Str::after($rule, 'swagger_description:'));
+            }
+        }
+        return '';
+    }
+
     /**
      * Get min value
      * @param array $parameterRules

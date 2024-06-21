@@ -172,6 +172,16 @@ $rules = [
 ];
 ```
 
+#### swagger_description
+
+It sets the description for the parameter in the documentation
+
+```php
+$rules = [
+    'limit'         =>  'swagger_description:Limit the number of items to return'
+];
+```
+
 #### swagger_min
 
 ```php
