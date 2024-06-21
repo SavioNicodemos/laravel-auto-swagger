@@ -169,6 +169,10 @@ class DefinitionGenerator
 
                     $meta = $propertyAnnotation['meta'];
 
+                    if (isset($meta['raw'])) {
+                        return [$property->getName() => $meta['raw']];
+                    }
+
                     $propertyType = $property->getType();
 
                     $data = [
