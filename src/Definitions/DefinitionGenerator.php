@@ -178,7 +178,8 @@ class DefinitionGenerator
                         'description' => $propertyAnnotation['summary'],
                     ];
 
-                    $keys = ['type', 'example', 'format', 'description', 'arrayOf'];
+                    // This keys are only the ones that are accepted by Swagger
+                    $keys = ['type', 'example', 'format', 'description'];
 
                     foreach ($keys as $key) {
                         if (isset($meta[$key])) {
@@ -188,15 +189,11 @@ class DefinitionGenerator
 
                     if ($data['type'] === 'array') {
                         $items = [
-                            'type' => 'string',
+                            'type' => isset($meta['arrayOf']) ? $meta['arrayOf'] : 'string',
                         ];
                         SwaggerHelper::addExampleKey($items);
 
                         $data['items'] = $items;
-                    }
-                    if (isset($meta['arrayOf'])) {
-                        $items['type'] = $meta['arrayOf'];
-                        unset($data['arrayOf']);
                     }
 
                     if (isset($meta['ref'])) {
