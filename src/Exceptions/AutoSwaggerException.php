@@ -2,10 +2,12 @@
 
 namespace AutoSwagger\Docs\Exceptions;
 
+use Exception;
+
 /**
- * Class InvalidDefinitionException
+ * Class AutoSwaggerException
  * @package AutoSwagger\Docs\Exceptions
  */
-class InvalidDefinitionException extends AutoSwaggerException
+class AutoSwaggerException extends Exception
 {
 }
