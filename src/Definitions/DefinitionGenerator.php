@@ -186,10 +186,6 @@ class DefinitionGenerator
                         }
                     }
 
-                    if (isset($meta['nullable'])) {
-                        $data['nullable'] = $meta['nullable'] === 'true';
-                    }
-
                     if ($data['type'] === 'array') {
                         $items = [
                             'type' => 'string',
