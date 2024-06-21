@@ -63,15 +63,15 @@ The annotations are written in the PHPDoc block of your controller methods. The 
 ```php
 /**
  * @Request({
- *    summary: Title of the route,
- *    description: This is a longer description for the route which will be visible once the panel is expanded,
- *    tags: [Authentication,Users]
+ *    "summary": "Title of the route",
+ *    "description": "This is a longer description for the route which will be visible once the panel is expanded",
+ *    "tags": ["Authentication","Users"]
  * })
  * 
  */
 ```
 
-In the syntax is very similar to JSON but without the need to use quotes.
+The syntax is basically a JSON inside a comment block. Just be aware to follow strictly the JSON syntax.
 
 #### Rules
 
@@ -92,9 +92,9 @@ You can have only one `@Request()` decorator.
 * And anything 1 * apart from the "summary" will count as "description"
 *
 * @Request({
-*     summary: Title of the route, // <- If you add here, this will overwrite the summary from above.
-*     description: A short description, // <- If you need a longer one, just use the comment itself
-*     tags: [Authentication,Users] // <- This Request will be used in this two tags section
+*     "summary": "Title of the route", // <- If you add here, this will overwrite the summary from above.
+*     "description": "A short description", // <- If you need a longer one, just use the comment itself
+*     "tags": ["Authentication","Users"] // <- This Request will be used in this two tags section
 * })
 */
 public function someMethod(Request $request) {}
@@ -111,22 +111,22 @@ You can have multiple `@Response` decorators
 ```php
 /**
 * @Response({
-*     code: 200
-*     description: return user model
-*     ref: User
+*     "code": 200,
+*     "description": "Return user model",
+*     "ref": "User"
 * })
 * @Response({
-*     code: 400
-*     description: Bad Request, array of APIError model
-*     ref: APIError[] // <- An Array of APIError, can be a custom Schema
+*     "code": 400,
+*     "description": "Bad Request",
+*     "ref": "APIError[]" // <- An Array of APIError, can be a custom Schema
 * })
 * @Response({
-*     code: 302
-*     description: Redirect
+*     "code": "302",
+*     "description": "Redirect"
 * })
 * @Response({
-*     code: 500
-*     description: Internal Server Error
+*     "code": 500,
+*     "description": "Internal Server Error"
 * })
 */
 public function someMethod(Request $request) {}
@@ -136,9 +136,9 @@ public function someMethod(Request $request) {}
  * 
  * 
  * @Response({
- *     code: 200
- *     description: direct user model reference
- *     ref: #/components/schemas/User // <- Full Schema path
+ *     "code": 200,
+ *     "description": "Direct user model reference",
+ *     "ref": "#/components/schemas/User" // <- Full Schema path
  * })
  */
 public function someMethod2(Request $request) {}
@@ -147,9 +147,9 @@ public function someMethod2(Request $request) {}
  * Using P schema builder for Laravel Pagination
  * 
  * @Response({
- *     code: 200
- *     description: a laravel pagination instance with User model
- *     ref: P(User) // <- Using Schema Builder
+ *     "code": 200,
+ *     "description": "A laravel pagination instance with User model",
+ *     "ref": "P(User)" // <- Using Schema Builder
  * })
  */
 public function someMethod3(Request $request) {}
