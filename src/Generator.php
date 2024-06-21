@@ -18,6 +18,7 @@ use phpDocumentor\Reflection\DocBlockFactory;
 use Laravel\Passport\Http\Middleware\CheckScopes;
 use Laravel\Passport\Http\Middleware\CheckForAnyScope;
 use AutoSwagger\Docs\Definitions\DefinitionGenerator;
+use AutoSwagger\Docs\Exceptions\AnnotationException;
 use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
 use AutoSwagger\Docs\Exceptions\SchemaBuilderNotFound;
 use AutoSwagger\Docs\Helpers\AnnotationsHelper;
@@ -418,10 +419,11 @@ class Generator
                 }
             }
         } catch (Exception $exception) {
-            if ($exception instanceof SchemaBuilderNotFound) {
-                throw $exception;
-            }
-            if ($exception instanceof ReflectionException) {
+            if (
+                $exception instanceof SchemaBuilderNotFound ||
+                $exception instanceof AnnotationException ||
+                $exception instanceof ReflectionException
+            ) {
                 throw $exception;
             }
         }

@@ -3,6 +3,7 @@
 namespace AutoSwagger\Docs\Helpers;
 
 use AutoSwagger\Docs\Exceptions\SchemaBuilderNotFound;
+use AutoSwagger\Docs\Exceptions\AnnotationException;
 use Illuminate\Support\Str;
 use phpDocumentor\Reflection\DocBlock\Tag;
 use phpDocumentor\Reflection\DocBlock\Tags\Generic;
@@ -20,27 +21,19 @@ class AnnotationsHelper
      */
     public function parseRawDocumentationTag($rawTag): array
     {
-        $lines = Str::of((string) $rawTag)
-            ->replace('({', '')
-            ->replace('})', '')
-            ->replace(["\r\n", "\n\r", "\r", PHP_EOL], "\n")
-            ->explode("\n")
-            ->filter(fn (string $value) => strlen($value) > 1)
-            ->map(fn (string $value) => rtrim(trim($value), ','))
-            ->toArray();
+        $comment = trim((string) $rawTag, '()');
 
-        $parsed = [];
-
-        foreach ($lines as $line) {
-            [$key, $value] = array_map(fn (string $value) => trim($value), explode(':', $line));
-            if (Str::startsWith($value, '[') && Str::endsWith($value, ']')) {
-                $value = substr($value, 1, -1);
-                $value = array_map(fn (string $string) => trim($string), explode(',', $value));
-            }
-            $parsed[$key] = $value;
+        if (!$comment) {
+            return [];
         }
 
-        return $parsed;
+        $json = json_decode($comment, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new AnnotationException($comment);
+        }
+
+        return $json;
     }
 
     public function getCommentProperties(?string $classComment, string $targetTag): array
