@@ -72,10 +72,10 @@ class SwaggerServiceProvider extends ServiceProvider
      */
     private function loadValidationRules(): void
     {
-        Validator::extend('swagger_default', function (string $attribute, $value, array $parameters, Validator $validator) {
+        Validator::extend('swagger_default', function () {
             return true;
         });
-        Validator::extend('swagger_min', function (string $attribute, $value, array $parameters, Validator $validator) {
+        Validator::extend('swagger_min', function ($_, $value, array $parameters) {
             [$min, $fail] = $this->parseParameters($parameters);
             $valueType = $this->getTypeFromString((string) $value);
             settype($min, $valueType);
@@ -84,7 +84,7 @@ class SwaggerServiceProvider extends ServiceProvider
             }
             return true;
         });
-        Validator::extend('swagger_max', function (string $attribute, $value, array $parameters, Validator $validator) {
+        Validator::extend('swagger_max', function ($_, $value, array $parameters) {
             [$max, $fail] = $this->parseParameters($parameters);
             $valueType = $this->getTypeFromString((string) $value);
             settype($max, $valueType);
