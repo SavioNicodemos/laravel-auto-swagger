@@ -183,7 +183,7 @@ class DefinitionGenerator
                     ];
 
                     // This keys are only the ones that are accepted by Swagger
-                    $keys = ['type', 'example', 'format', 'description'];
+                    $keys = ['type', 'example', 'format', 'description', 'nullable'];
 
                     foreach ($keys as $key) {
                         if (isset($meta[$key])) {
