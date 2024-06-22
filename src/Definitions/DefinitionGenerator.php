@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * Class DefinitionGenerator
@@ -161,61 +162,22 @@ class DefinitionGenerator
             );
 
             $properties = collect($reflection->getProperties())
-                ->mapWithKeys(function ($property) {
+                ->mapWithKeys(function (ReflectionProperty $property) {
                     $propertyAnnotation = $this->annotationsHelper->getCommentProperties(
                         $property->getDocComment(),
                         'Property'
                     );
-
                     $meta = $propertyAnnotation['meta'];
 
                     if (isset($meta['raw'])) {
                         return [$property->getName() => $meta['raw']];
                     }
 
-                    $propertyType = $property->getType();
+                    $data = $this->createBaseData($property, $propertyAnnotation['summary']);
 
-                    $data = [
-                        'type' => ConversionHelper::phpTypeToSwaggerType(
-                            $propertyType ? $propertyType->getName() : 'string'
-                        ),
-                        'description' => $propertyAnnotation['summary'],
-                    ];
-
-                    // This keys are only the ones that are accepted by Swagger
-                    $keys = ['type', 'example', 'format', 'description', 'nullable'];
-
-                    foreach ($keys as $key) {
-                        if (isset($meta[$key])) {
-                            $data[$key] = $meta[$key];
-                        }
-                    }
-
-                    if ($data['type'] === 'array') {
-                        $items = [
-                            'type' => isset($meta['arrayOf']) ? $meta['arrayOf'] : 'string',
-                        ];
-                        SwaggerHelper::addExampleKey($items);
-
-                        $data['items'] = $items;
-                    }
-
-                    if (isset($meta['ref'])) {
-                        [$arrayOfSchemas, $schemaBuilded] =
-                            $this->annotationsHelper->parsedSchemas($meta['ref']);
-
-                        if ($arrayOfSchemas) {
-                            $data['type'] = $arrayOfSchemas['type'];
-                            $data['items'] = $arrayOfSchemas['items'];
-                        } elseif ($schemaBuilded) {
-                            $data['type'] = $schemaBuilded['type'];
-                            $data['properties'] = $schemaBuilded['properties'];
-                            $data['required'] = $schemaBuilded['required'];
-                        } else {
-                            $data = []; // We need to reset the data when add $ref
-                            $data['$ref'] = '#/components/schemas/' . $meta['ref'];
-                        }
-                    }
+                    $this->handleSwaggerNativeKeys($data, $meta);
+                    $this->handleArrayType($data, $meta);
+                    $this->handleRef($data, $meta);
 
                     SwaggerHelper::addExampleKey($data);
 
@@ -243,6 +205,68 @@ class DefinitionGenerator
         }
 
         return $schemas;
+    }
+
+    private function createBaseData(ReflectionProperty $property, string $description): array
+    {
+        $propertyType = $property->getType();
+        $typeName = $propertyType ? $propertyType->getName() : 'string';
+
+        $data = [
+            'type' => ConversionHelper::phpTypeToSwaggerType($typeName),
+            'description' => $description,
+        ];
+
+        return $data;
+    }
+
+    private function handleRef(array &$data, array $meta): void
+    {
+        if (!isset($meta['ref'])) return;
+
+        [$arrayOfSchemas, $schemaBuilded] =
+            $this->annotationsHelper->parsedSchemas($meta['ref']);
+
+        if ($arrayOfSchemas) {
+            $data['type'] = $arrayOfSchemas['type'];
+            $data['items'] = $arrayOfSchemas['items'];
+        } elseif ($schemaBuilded) {
+            $data['type'] = $schemaBuilded['type'];
+            $data['properties'] = $schemaBuilded['properties'];
+            $data['required'] = $schemaBuilded['required'];
+        } else {
+            $data = []; // We need to reset the data when add $ref
+            $data['$ref'] = '#/components/schemas/' . $meta['ref'];
+        }
+    }
+
+    private function handleArrayType(array &$data, array $meta): void
+    {
+        if ($data['type'] !== 'array') return;
+
+        $items = [
+            'type' => isset($meta['arrayOf']) ? $meta['arrayOf'] : 'string',
+        ];
+        SwaggerHelper::addExampleKey($items);
+
+        $data['items'] = $items;
+    }
+
+    private function handleSwaggerNativeKeys(array &$data, array $meta): void
+    {
+        $nativeKeys = [
+            'type',
+            'description',
+            'example',
+            'nullable',
+            'format',
+        ];
+
+        foreach ($nativeKeys as $key) {
+            if (isset($meta[$key])) {
+                $data[$key] = $meta[$key];
+            }
+        }
     }
 
     function generateSchemasFromModels(): array
