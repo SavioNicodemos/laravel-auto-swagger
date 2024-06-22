@@ -217,6 +217,21 @@ class DefinitionGenerator
             'description' => $description,
         ];
 
+        try {
+            $propertyValue = $property->isStatic() ? $property->getValue() : U_UNDEFINED_VARIABLE;
+            if ($propertyValue !== U_UNDEFINED_VARIABLE) {
+                $data['example'] = $propertyValue;
+            }
+        } catch (\Error $e) {
+            // We are ignoring this exception because it is not relevant. 
+            // The only thing we need to know is that 'example' key will just
+            // not be set and this is expected in case of this error.
+        }
+
+        if ($propertyType && $propertyType->allowsNull()) {
+            $data['nullable'] = true;
+        }
+
         return $data;
     }
 
