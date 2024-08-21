@@ -3,8 +3,6 @@
 namespace AutoSwagger\Docs;
 
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use AutoSwagger\Docs\Commands\GenerateSwaggerDocumentation;
@@ -51,15 +49,6 @@ class SwaggerServiceProvider extends ServiceProvider
         );
 
         $this->loadValidationRules();
-
-        try {
-            DB::connection()
-                ->getDoctrineConnection()
-                ->getDatabasePlatform()
-                ->registerDoctrineTypeMapping('enum', 'string');
-        } catch (\Exception $e) {
-            Log::error('[AutoSwagger\Docs] Could not register enum type as string because of connection error.');
-        }
 
         if (file_exists($file = __DIR__ . '/helpers.php')) {
             require $file;

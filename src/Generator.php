@@ -8,6 +8,8 @@ use ReflectionMethod;
 use ReflectionException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Route;
 use Laravel\Passport\Passport;
 use AutoSwagger\Docs\Parameters;
@@ -22,6 +24,7 @@ use AutoSwagger\Docs\Exceptions\AnnotationException;
 use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
 use AutoSwagger\Docs\Exceptions\SchemaBuilderNotFound;
 use AutoSwagger\Docs\Helpers\AnnotationsHelper;
+use AutoSwagger\Docs\Helpers\ConfigHelper;
 
 /**
  * Class Generator
@@ -98,6 +101,17 @@ class Generator
             $apiBasePath = substr($apiBasePath, 0, -1);
         }
         $this->routeFilter = $apiBasePath;
+
+        if (!ConfigHelper::shouldIgnoreAllModels()) {
+            try {
+                DB::connection()
+                    ->getDoctrineConnection()
+                    ->getDatabasePlatform()
+                    ->registerDoctrineTypeMapping('enum', 'string');
+            } catch (\Exception $e) {
+                Log::error('[AutoSwagger\Docs] Could not register enum type as string because of connection error.');
+            }
+        }
     }
 
     /**
