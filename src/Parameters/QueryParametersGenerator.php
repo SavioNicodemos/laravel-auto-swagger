@@ -49,6 +49,7 @@ class QueryParametersGenerator implements ParametersGenerator
             $enums = $this->getEnumValues($parameterRules);
             $type = $this->getParameterType($parameterRules);
             $default = $this->getDefaultValue($parameterRules);
+            $example = $this->getExampleValue($parameterRules);
             $description = $this->getDescription($parameterRules);
             $min = $this->getMinValue($parameterRules);
             $max = $this->getMaxValue($parameterRules);
@@ -77,6 +78,10 @@ class QueryParametersGenerator implements ParametersGenerator
             if ($default) {
                 settype($default, $type);
                 Arr::set($parameterObject, 'schema.default', $default);
+            }
+            if ($example) {
+                settype($example, $type);
+                Arr::set($parameterObject, 'schema.example', $example);
             }
             if ($min) {
                 settype($min, $type);

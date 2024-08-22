@@ -205,6 +205,16 @@ trait GeneratesFromRules
         return '';
     }
 
+    protected function getExampleValue(array $parameterRules): string
+    {
+        foreach ($parameterRules as $rule) {
+            if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_example')) {
+                return trim(Str::after($rule, 'swagger_example:'));
+            }
+        }
+        return '';
+    }
+
     /**
      * Get min value
      * @param array $parameterRules

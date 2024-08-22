@@ -64,6 +64,9 @@ class SwaggerServiceProvider extends ServiceProvider
         Validator::extend('swagger_default', function () {
             return true;
         });
+        Validator::extend('swagger_example', function () {
+            return true;
+        });
         Validator::extend('swagger_description', function () {
             return true;
         });

@@ -172,6 +172,22 @@ $rules = [
 ];
 ```
 
+#### swagger_example
+
+It sets the example value for the parameter in the documentation
+
+```php
+$rules = [
+    'currency'        =>  'swagger_example:EUR'
+];
+```
+
+> [!NOTE]
+> The difference between `swagger_default` and `swagger_example` is that
+> `swagger_default` will inform to the user that this value is the default value
+> for this parameter inside the application. `swagger_example` will just illustrate
+> an example of how the parameter should be filled.
+
 #### swagger_description
 
 It sets the description for the parameter in the documentation
