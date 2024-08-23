@@ -139,14 +139,23 @@ class BodyParametersGenerator implements ParametersGenerator
      * @param array $properties
      * @param array $nameTokens
      * @param array $rules
+     * @param array $requiredArray
      */
-    protected function addToProperties(array &$properties, array $nameTokens, array $rules): void
-    {
+    protected function addToProperties(
+        array &$properties,
+        array $nameTokens,
+        array $rules,
+        array &$requiredArray = []
+    ): void {
         if (\count($nameTokens) === 0) {
             return;
         }
 
         $name = array_shift($nameTokens);
+
+        if ($this->isParameterRequired($rules)) {
+            $requiredArray[] = $name;
+        }
 
         if (!empty($nameTokens)) {
             $type = $this->getNestedParameterType($nameTokens);
@@ -162,6 +171,9 @@ class BodyParametersGenerator implements ParametersGenerator
             $propertyObject = $this->createNewPropertyObject($type, $rules);
             Arr::set($properties, $name, $propertyObject);
             $extra = $this->getParameterExtra($type, $rules);
+
+            $this->getCustomSwaggerRules($extra, $rules, $type);
+
             foreach ($extra as $key => $value) {
                 Arr::set($properties, $name . '.' . $key, $value);
             }
@@ -172,8 +184,43 @@ class BodyParametersGenerator implements ParametersGenerator
         if ($type === 'array') {
             $this->addToProperties($properties[$name]['items'], $nameTokens, $rules);
         } else if ($type === 'object' && isset($properties[$name]['properties'])) {
-            $this->addToProperties($properties[$name]['properties'], $nameTokens, $rules);
+            $localRequired = [];
+            $this->addToProperties($properties[$name]['properties'], $nameTokens, $rules, $localRequired);
+            if (count($localRequired) > 0) {
+                $properties[$name]['required'] = array_merge(
+                    $properties[$name]['required'] ?? [],
+                    $localRequired
+                );
+            }
         }
+    }
+
+    /**
+     * Add extra params from swagger_ rules
+     */
+    protected function getCustomSwaggerRules(array &$extra, array $rules, string $type)
+    {
+        if (in_array($type, ['object', 'array']) && !in_array($type, $rules)) {
+            return;
+        }
+
+        $processValue = function ($value) use ($type) {
+            if ($value !== null) {
+                if ($type === 'boolean' && $value === 'false') {
+                    $value = '';
+                }
+                settype($value, $type);
+            }
+            return $value;
+        };
+
+        $universalParams = array_filter([
+            'default' => $processValue($this->getDefaultValue($rules) ?: null),
+            'example' => $processValue($this->getExampleValue($rules) ?: null),
+            'description' => $this->getDescription($rules) ?: null,
+        ], fn($value) => $value !== null);
+
+        $extra = array_merge($extra, $universalParams);
     }
 
     /**

@@ -65,10 +65,16 @@ trait GeneratesFromRules
                     [$_, $value] = explode(':', $rule);
                     $extra['minimum'] = intval(trim($value));
                 }
+                if (!isset($extra['minimum']) && $min = $this->getMinValue($parameterRules)) {
+                    $extra['minimum'] = $min;
+                }
 
                 if (Str::startsWith($rule, 'max')) {
                     [$_, $value] = explode(':', $rule);
                     $extra['maximum'] = intval(trim($value));
+                }
+                if (!isset($extra['maximum']) && $max = $this->getMaxValue($parameterRules)) {
+                    $extra['maximum'] = $max;
                 }
 
                 if (Str::startsWith($rule, 'multiple_of')) {
@@ -85,10 +91,16 @@ trait GeneratesFromRules
                     [$_, $value] = explode(':', $rule);
                     $extra['minLength'] = intval(trim($value));
                 }
+                if (!isset($extra['minLength']) && $min = $this->getMinValue($parameterRules)) {
+                    $extra['minLength'] = $min;
+                }
 
                 if (Str::startsWith($rule, 'max')) {
                     [$_, $value] = explode(':', $rule);
                     $extra['maxLength'] = intval(trim($value));
+                }
+                if (!isset($extra['maxLength']) && $max = $this->getMaxValue($parameterRules)) {
+                    $extra['maxLength'] = $max;
                 }
 
                 $formatMap = [
