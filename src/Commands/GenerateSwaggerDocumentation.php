@@ -2,6 +2,8 @@
 
 namespace AutoSwagger\Docs\Commands;
 
+use AutoSwagger\Docs\Exceptions\InvalidAuthenticationFlow;
+use AutoSwagger\Docs\Exceptions\InvalidDefinitionException;
 use Illuminate\Console\Command;
 use AutoSwagger\Docs\Formatter;
 use AutoSwagger\Docs\Generator;
@@ -48,8 +50,10 @@ class GenerateSwaggerDocumentation extends Command
     }
 
     /**
-     * @inheritDoc
-     * @throws InvalidFormatException|ExtensionNotLoaded
+     * @throws InvalidFormatException
+     * @throws ExtensionNotLoaded
+     * @throws InvalidAuthenticationFlow
+     * @throws InvalidDefinitionException
      */
     public function handle(): void
     {

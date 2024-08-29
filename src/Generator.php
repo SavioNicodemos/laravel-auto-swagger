@@ -2,6 +2,9 @@
 
 namespace AutoSwagger\Docs;
 
+use AutoSwagger\Docs\Helpers\PathParamsHelper;
+use AutoSwagger\Docs\Helpers\RouteHelper;
+use AutoSwagger\Docs\Helpers\SwaggerSecurityHelper;
 use Exception;
 use AutoSwagger\Docs\Exceptions\InvalidDefinitionException;
 use ReflectionMethod;
@@ -11,7 +14,6 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Route;
-use Laravel\Passport\Passport;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Http\FormRequest;
 use phpDocumentor\Reflection\DocBlockFactory;
@@ -29,11 +31,6 @@ use function count;
  */
 class Generator
 {
-
-    const OAUTH_TOKEN_PATH = '/oauth/token';
-
-    const OAUTH_AUTHORIZE_PATH = '/oauth/authorize';
-
     /**
      * Configuration repository instance
      */
@@ -70,6 +67,8 @@ class Generator
     protected array $append;
 
     protected AnnotationsHelper $annotationsHelper;
+
+    protected array $routeRenaming = [];
 
     /**
      * Generator constructor.
@@ -117,21 +116,22 @@ class Generator
         Arr::set($documentation, 'components.schemas', $this->definitionGenerator->generateSchemas());
 
         if ($this->fromConfig('parse.security', false) /*&& $this->hasOAuthRoutes($applicationRoutes)*/) {
-            Arr::set($documentation, 'components.securitySchemes', $this->generateSecurityDefinitions());
+            Arr::set(
+                $documentation,
+                'components.securitySchemes',
+                SwaggerSecurityHelper::generateSecurityDefinitions()
+            );
             $this->hasSecurityDefinitions = true;
         }
 
-        $basePath = $this->routeFilter ?: $this->fromConfig('api_base_path');
+        $ignoredRoutes = Arr::get($this->ignored, 'routes', []);
         foreach ($applicationRoutes as $route) {
-            if ($this->isFilteredRoute($route)) {
+            if (RouteHelper::isFilteredRoute($route, $this->routeFilter, $ignoredRoutes)) {
                 continue;
             }
 
-            $uri = Str::replaceFirst($basePath, '', $route->uri());
-            if ($uri === '') {
-                $uri = '/';
-            }
-            if (!Str::startsWith($uri, '/')) {
+            $uri = RouteHelper::getRelativePathFromUri($route->uri(), $this->routeFilter);
+            if ($uri === null) {
                 continue;
             }
             $pathKey = 'paths.'.$uri;
@@ -150,6 +150,8 @@ class Generator
                 Arr::set($documentation, $methodKey, $this->generatePath($route, $method, $tagFromPrefix));
             }
         }
+
+        PathParamsHelper::renamePaths($documentation, $this->routeRenaming);
 
         return $documentation;
     }
@@ -232,29 +234,6 @@ class Generator
     }
 
     /**
-     * Check whether this is filtered route
-     */
-    private function isFilteredRoute(DataObjects\Route $route): bool
-    {
-        $ignoredRoutes = Arr::get($this->ignored, 'routes');
-        $routeName = $route->name();
-        $routeUri = $route->uri();
-        if ($routeName) {
-            if (in_array($routeName, $ignoredRoutes)) {
-                return true;
-            }
-        }
-
-        if (in_array($routeUri, $ignoredRoutes)) {
-            return true;
-        }
-        if ($this->routeFilter) {
-            return !preg_match('/^'.preg_quote($this->routeFilter, '/').'/', $route->uri());
-        }
-        return false;
-    }
-
-    /**
      * Generate Path information
      */
     private function generatePath(DataObjects\Route $route, string $method, ?string $tagFromPrefix): array
@@ -268,7 +247,16 @@ class Generator
 
         $this->addConfigAppendItems($documentation);
 
-        $this->checkForPathParamsChanges($documentation);
+        $relativeUri = RouteHelper::getRelativePathFromUri($route->uri(), $this->routeFilter);
+        try {
+            PathParamsHelper::checkForPathParamsChanges($documentation, $relativeUri, $this->routeRenaming);
+        } catch (Exceptions\MultiplePathParamsException $e) {
+            $message = sprintf(
+                "[AutoSwagger/Docs] Route '%s' has 'pathParams' changes more than once. When editing path params, please change in only one method/place and the changes will be applied to all methods of the route.",
+                $relativeUri);
+            Log::warning($message, ['route' => $route->uri()]);
+            dump($message);
+        }
 
         if ($this->hasSecurityDefinitions) {
             $this->addActionScopes($documentation, $route);
@@ -288,42 +276,6 @@ class Generator
         }
 
         return $documentation;
-    }
-
-    /**
-     * Check for path params changes, if was requested some renaming or type change
-     */
-    private function checkForPathParamsChanges(array &$documentation): void
-    {
-        if (!Arr::has($documentation, 'pathParamsChanges')) {
-            return;
-        }
-
-        $parameters = collect(Arr::get($documentation, 'parameters'));
-        $pathParamsExcluded = $parameters->where('in', '!==', 'path')->all();
-        $pathParams = $parameters->where('in', 'path')->all();
-        $pathParamsChanges = Arr::get($documentation, 'pathParamsChanges');
-
-        foreach ($pathParams as $key => $param) {
-            if (isset($pathParamsChanges[$key])) {
-                $pathParams[$key] = $this->updatePathParam($param, $pathParamsChanges[$key]);
-            }
-        }
-
-        Arr::forget($documentation, 'pathParamsChanges');
-        Arr::set($documentation, 'parameters', array_merge($pathParamsExcluded, $pathParams));
-    }
-
-    /**
-     * Update path param with new values
-     */
-    private function updatePathParam(array $pathParam, array $updatedPathParam): array
-    {
-        if ($type = Arr::get($updatedPathParam, 'type')) {
-            $pathParam['schema']['type'] = $type;
-            Arr::forget($updatedPathParam, 'type');
-        }
-        return array_merge($pathParam, $updatedPathParam);
     }
 
     private function addTagsFromControllerName(array &$documentation, ?ReflectionMethod $actionMethodInstance): void
@@ -462,7 +414,6 @@ class Generator
         return $value;
     }
 
-
     /**
      * Append items from 'swagger.config'
      */
@@ -569,7 +520,7 @@ class Generator
     private function addActionScopes(array &$information, DataObjects\Route $route)
     {
         foreach ($route->middleware() as $middleware) {
-            if (!$this->isSecurityMiddleware($middleware)) {
+            if (SwaggerSecurityHelper::isSecurityMiddleware($middleware)) {
                 continue;
             }
 
@@ -620,119 +571,5 @@ class Generator
             default:
                 return new Parameters\QueryParametersGenerator($rules);
         }
-    }
-
-    /**
-     * Check whether specified middleware belongs to registered security middlewares
-     */
-    private function isSecurityMiddleware(DataObjects\Middleware $middleware): bool
-    {
-        return in_array("$middleware", $this->fromConfig('security_middlewares'));
-    }
-
-    /**
-     * Generate security definitions
-     * @return array[]
-     *
-     * @throws InvalidAuthenticationFlow|InvalidDefinitionException
-     */
-    private function generateSecurityDefinitions(): array
-    {
-        $authenticationFlows = $this->fromConfig('authentication_flow');
-
-        $definitions = [];
-
-        foreach ($authenticationFlows as $definition => $flow) {
-            $this->validateAuthenticationFlow($definition, $flow);
-            $definitions[$definition] = $this->createSecurityDefinition($definition, $flow);
-        }
-
-        return $definitions;
-    }
-
-    /**
-     * Create security definition
-     * @return string[]
-     */
-    private function createSecurityDefinition(string $definition, string $flow): array
-    {
-        switch ($definition) {
-            case 'OAuth2':
-                $definitionBody = [
-                    'type' => 'oauth2',
-                    'flows' => [
-                        $flow => []
-                    ],
-                ];
-                $flowKey = 'flows.'.$flow.'.';
-                if (in_array($flow, ['implicit', 'authorizationCode'])) {
-                    Arr::set($definitionBody, $flowKey.'authorizationUrl',
-                        $this->getEndpoint(self::OAUTH_AUTHORIZE_PATH));
-                }
-
-                if (in_array($flow, ['password', 'application', 'authorizationCode'])) {
-                    Arr::set($definitionBody, $flowKey.'tokenUrl', $this->getEndpoint(self::OAUTH_TOKEN_PATH));
-                }
-                Arr::set($definitionBody, $flowKey.'scopes', $this->generateOAuthScopes());
-                return $definitionBody;
-            case 'bearerAuth':
-                return [
-                    'type' => $flow,
-                    'scheme' => 'bearer',
-                    'bearerFormat' => 'JWT'
-                ];
-        }
-        return [];
-    }
-
-    /**
-     * Validate selected authentication flow
-     *
-     * @throws InvalidAuthenticationFlow|InvalidDefinitionException
-     */
-    private function validateAuthenticationFlow(string $definition, string $flow): void
-    {
-        $definitions = [
-            'OAuth2' => ['password', 'application', 'implicit', 'authorizationCode'],
-            'bearerAuth' => ['http']
-        ];
-
-        if (!Arr::has($definitions, $definition)) {
-            throw new InvalidDefinitionException('Invalid Definition, please select from the following: '.
-                implode(', ', array_keys($definitions)));
-        }
-
-        $allowed = $definitions[$definition];
-        if (!in_array($flow, $allowed)) {
-            throw new InvalidAuthenticationFlow(
-                'Invalid Authentication Flow, please select one from the following: '.
-                implode(', ', $allowed));
-        }
-    }
-
-    /**
-     * Get endpoint
-     */
-    private function getEndpoint(string $path): string
-    {
-        $host = $this->fromConfig('host');
-        if (!Str::startsWith($host, 'http://') || !Str::startsWith($host, 'https://')) {
-            $schema = swagger_is_connection_secure() ? 'https://' : 'http://';
-            $host = $schema.$host;
-        }
-        return rtrim($host, '/').$path;
-    }
-
-    /**
-     * Generate OAuth scopes
-     */
-    private function generateOAuthScopes(): array
-    {
-        if (!class_exists(Passport::class)) {
-            return [];
-        }
-
-        $scopes = Passport::scopes()->toArray();
-        return array_combine(array_column($scopes, 'id'), array_column($scopes, 'description'));
     }
 }
