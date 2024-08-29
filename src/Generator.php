@@ -300,6 +300,8 @@ class Generator
 
         $this->addConfigAppendItems($documentation);
 
+        $this->checkForPathParamsChanges($documentation);
+
         if ($this->hasSecurityDefinitions) {
             $this->addActionScopes($documentation, $route);
         }
@@ -320,7 +322,35 @@ class Generator
         return $documentation;
     }
 
+    private function checkForPathParamsChanges(array &$documentation): void
+    {
+        if (!Arr::has($documentation, 'pathParamsChanges')) {
+            return;
+        }
 
+        $parameters = collect(Arr::get($documentation, 'parameters'));
+        $pathParamsExcluded = $parameters->where('in', '!==', 'path')->all();
+        $pathParams = $parameters->where('in', 'path')->all();
+        $pathParamsChanges = Arr::get($documentation, 'pathParamsChanges');
+
+        foreach ($pathParams as $key => $param) {
+            if (isset($pathParamsChanges[$key])) {
+                $pathParams[$key] = $this->updatePathParam($param, $pathParamsChanges[$key]);
+            }
+        }
+
+        Arr::forget($documentation, 'pathParamsChanges');
+        Arr::set($documentation, 'parameters', array_merge($pathParamsExcluded, $pathParams));
+    }
+
+    private function updatePathParam(array $pathParam, array $updatedPathParam): array
+    {
+        if ($type = Arr::get($updatedPathParam, 'type')) {
+            $pathParam['schema']['type'] = $type;
+            Arr::forget($updatedPathParam, 'type');
+        }
+        return array_merge($pathParam, $updatedPathParam);
+    }
 
     private function addTagsFromControllerName(array &$documentation, ?ReflectionMethod $actionMethodInstance): void
     {
@@ -381,8 +411,8 @@ class Generator
                 $firstTag = Arr::first($parsedComment->getTagsByName('Request'));
                 $tagData = $this->annotationsHelper->parseRawDocumentationTag($firstTag);
                 foreach ($tagData as $key => $value) {
-                    if ($key === 'operationId') {
-                        $documentation['operationId'] = $value;
+                    if (in_array($key, ['operationId', 'pathParams'])) {
+                        $documentation[$key] = $value;
                         continue;
                     }
                     Arr::set($documentation, $key, $value);
