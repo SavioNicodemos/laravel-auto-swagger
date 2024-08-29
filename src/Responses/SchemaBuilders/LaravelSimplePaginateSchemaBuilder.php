@@ -25,7 +25,7 @@ class LaravelSimplePaginateSchemaBuilder implements SchemaBuilder
         if (!Str::startsWith($uri, '/')) {
             $uri = '/' . $uri;
         }
-        $url = env('APP_URL') . $uri;
+        $url = config('app.url') . $uri;
         return [
             'type' => 'object',
             'required' => ['current_page', 'data', 'first_page_url', 'path', 'per_page'],

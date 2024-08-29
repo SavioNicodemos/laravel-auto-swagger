@@ -223,8 +223,8 @@ class Generator
 
         if (count($servers) === 0) {
             $servers[] = [
-                'url' => env('APP_URL'),
-                'description' => env('APP_NAME').' Main Server'
+                'url' => config('app.url'),
+                'description' => config('app.name').' Main Server'
             ];
         }
 
