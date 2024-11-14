@@ -96,6 +96,7 @@ class QueryParametersGenerator implements ParametersGenerator
                 Arr::set($parameterObject, 'items', [
                     'type'  =>  'string'
                 ]);
+                Arr::set($parameterObject, 'name', $parameter . '[]');
             }
             Arr::set($parameters, $parameter, $parameterObject);
         }
