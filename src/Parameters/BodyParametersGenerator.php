@@ -169,6 +169,10 @@ class BodyParametersGenerator implements ParametersGenerator
 
         if (!Arr::has($properties, $name)) {
             $propertyObject = $this->createNewPropertyObject($type, $rules);
+            if ($type === 'object' && !empty($nameTokens)) {
+                $propertyObject['properties'] = [];
+                unset($propertyObject['items']);
+            }
             Arr::set($properties, $name, $propertyObject);
             $extra = $this->getParameterExtra($type, $rules);
 
@@ -179,6 +183,12 @@ class BodyParametersGenerator implements ParametersGenerator
             }
         } else {
             Arr::set($properties, $name . '.type', $type);
+            if ($type === 'object' && !empty($nameTokens)) {
+                if (!isset($properties[$name]['properties'])) {
+                    Arr::set($properties, $name . '.properties', []);
+                }
+                Arr::forget($properties[$name], 'items');
+            }
         }
 
         if ($type === 'array') {
