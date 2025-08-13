@@ -198,6 +198,20 @@ $rules = [
 ];
 ```
 
+#### swagger_required
+
+It sets the required status for the parameter in the documentation without affecting the validation rules.
+It's useful if you have a parameter that is conditionally required based on other parameters.
+
+```php
+$rules = [
+    'limit'         =>  [
+        $condition ? 'required' : 'nullable',
+        'swagger_required:false'
+    ]
+];
+```
+
 #### swagger_min
 
 ```php

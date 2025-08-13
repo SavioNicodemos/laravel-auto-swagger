@@ -153,6 +153,14 @@ trait GeneratesFromRules
      */
     protected function isParameterRequired(array $parameterRules): bool
     {
+        // Check for custom swagger_required rule first
+        foreach ($parameterRules as $rule) {
+            if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_required')) {
+                [$key, $value] = explode(':', $rule);
+                return trim(strtolower($value)) === 'true';
+            }
+        }
+        // Fallback to Laravel 'required' rule
         return in_array('required', $parameterRules);
     }
 
