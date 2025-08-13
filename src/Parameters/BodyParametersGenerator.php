@@ -68,6 +68,7 @@ class BodyParametersGenerator implements ParametersGenerator
         }
 
         $this->cleanUpProperties($properties);
+        $this->ensureNotUselessArrayOfArrays($properties);
 
         Arr::set($schema, 'properties', $properties);
 
@@ -123,6 +124,47 @@ class BodyParametersGenerator implements ParametersGenerator
                 $this->cleanUpProperties($properties[$key]['items']['properties']);
             }
         }
+    }
+
+    protected function ensureNotUselessArrayOfArrays(array &$properties): void
+    {
+        foreach ($properties as $key => &$value) {
+            if (is_array($value)) {
+                // Check if this is the specific pattern we want to fix:
+                // 'items' => [['type' => '...']]
+                if ($key === 'items' && $this->isUselessArrayOfArrays($value)) {
+                    // Replace the array of arrays with just the inner object
+                    $value = $value[0];
+                }
+
+                // Recursively process nested arrays
+                $this->ensureNotUselessArrayOfArrays($value);
+            }
+        }
+    }
+
+    /**
+     * Check if the value matches the specific useless array-of-arrays pattern:
+     * - Must be an indexed array with exactly one element
+     * - That element must be an associative array
+     * - That associative array must contain only a 'type' key
+     */
+    private function isUselessArrayOfArrays(array $value): bool
+    {
+        // Must be an indexed array with exactly one element
+        if (!Arr::isList($value) || count($value) !== 1) {
+            return false;
+        }
+
+        $firstElement = $value[0];
+
+        // First element must be an associative array
+        if (!is_array($firstElement) || Arr::isList($firstElement)) {
+            return false;
+        }
+
+        // Must contain only a 'type' key
+        return count($firstElement) === 1 && array_key_exists('type', $firstElement);
     }
 
     /**
