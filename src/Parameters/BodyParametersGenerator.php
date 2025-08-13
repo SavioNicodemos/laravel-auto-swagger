@@ -192,7 +192,56 @@ class BodyParametersGenerator implements ParametersGenerator
         }
 
         if ($type === 'array') {
-            $this->addToProperties($properties[$name]['items'], $nameTokens, $rules);
+            // If next token is 0 or *, check if this is an array of primitives or objects
+            $isArrayOfObjects = false;
+            $itemType = 'string';
+            if (!empty($nameTokens) && ($nameTokens[0] === '0' || $nameTokens[0] === '*')) {
+                // Infer item type from rules
+                foreach ($rules as $rule) {
+                    if (strpos($rule, 'integer') !== false) {
+                        $itemType = 'integer';
+                        break;
+                    } else if (strpos($rule, 'boolean') !== false) {
+                        $itemType = 'boolean';
+                        break;
+                    } else if (strpos($rule, 'numeric') !== false) {
+                        $itemType = 'number';
+                        break;
+                    } else if (strpos($rule, 'array') !== false || strpos($rule, 'object') !== false) {
+                        $isArrayOfObjects = true;
+                        break;
+                    }
+                }
+                if ($isArrayOfObjects) {
+                    // Recurse for array of objects
+                    $this->addToProperties($properties[$name]['items'], array_slice($nameTokens, 1), $rules);
+                } else {
+                    // Set items to primitive type and do not recurse
+                    $properties[$name]['items'] = ['type' => $itemType];
+                }
+            } else {
+                // If no next token, infer from rules
+                foreach ($rules as $rule) {
+                    if (strpos($rule, 'integer') !== false) {
+                        $itemType = 'integer';
+                        break;
+                    } else if (strpos($rule, 'boolean') !== false) {
+                        $itemType = 'boolean';
+                        break;
+                    } else if (strpos($rule, 'numeric') !== false) {
+                        $itemType = 'number';
+                        break;
+                    } else if (strpos($rule, 'array') !== false || strpos($rule, 'object') !== false) {
+                        $isArrayOfObjects = true;
+                        break;
+                    }
+                }
+                if ($isArrayOfObjects) {
+                    $this->addToProperties($properties[$name]['items'], $nameTokens, $rules);
+                } else {
+                    $properties[$name]['items'] = ['type' => $itemType];
+                }
+            }
         } else if ($type === 'object' && isset($properties[$name]['properties'])) {
             $localRequired = [];
             $this->addToProperties($properties[$name]['properties'], $nameTokens, $rules, $localRequired);
