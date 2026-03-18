@@ -16,7 +16,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>{{ config('swagger.title') }}</title>
+    <title>{{ $title }}</title>
     <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
 </head>
 

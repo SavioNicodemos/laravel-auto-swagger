@@ -31,17 +31,22 @@ if (!function_exists('strip_optional_char')) {
 }
 
 if (!function_exists('swagger_resolve_documentation_file_path')) {
-    function swagger_resolve_documentation_file_path(): string {
-        $documentationFilePrefix = config('swagger.storage', storage_path('swagger')) . DIRECTORY_SEPARATOR . 'swagger.';
-        $documentationFile = '';
-        if (File::exists($documentationFilePrefix . 'json')) {
-            $documentationFile = $documentationFilePrefix . 'json';
-        } else {
-            if (File::exists($documentationFilePrefix . 'yaml')) {
-                $documentationFile = $documentationFilePrefix . 'yaml';
-            }
+    /**
+     * Resolve the path to the generated OpenAPI file for the given page.
+     * Returns an empty string when no file has been generated yet.
+     */
+    function swagger_resolve_documentation_file_path(string $pageName = 'default'): string {
+        $base = config('swagger.storage', storage_path('swagger')) . DIRECTORY_SEPARATOR . $pageName . '.';
+
+        if (File::exists($base . 'json')) {
+            return $base . 'json';
         }
-        return $documentationFile;
+
+        if (File::exists($base . 'yaml')) {
+            return $base . 'yaml';
+        }
+
+        return '';
     }
 }
 
@@ -55,4 +60,3 @@ if (!function_exists('swagger_is_connection_secure')) {
         return false;
     }
 }
-

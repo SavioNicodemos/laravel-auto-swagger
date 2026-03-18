@@ -3,10 +3,13 @@
 namespace AutoSwagger\Docs;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use AutoSwagger\Docs\Commands\GenerateSwaggerDocumentation;
 use AutoSwagger\Docs\Commands\MakeSwaggerSchemaBuilder;
+use AutoSwagger\Docs\Http\Controllers\SwaggerController;
 
 /**
  * Class SwaggerServiceProvider
@@ -38,20 +41,46 @@ class SwaggerServiceProvider extends ServiceProvider
         $this->loadViewsFrom($viewsPath, 'swagger');
 
         $this->publishes([
-            $viewsPath => config('swagger.views', base_path('resources/views/vendor/swagger')),
+            $viewsPath => Config::get('swagger.views', base_path('resources/views/vendor/swagger')),
         ]);
 
-        $this->loadRoutesFrom(__DIR__ . DIRECTORY_SEPARATOR . 'routes.php');
+        $this->mergeConfigFrom($source, 'swagger');
 
-        $this->mergeConfigFrom(
-            $source,
-            'swagger'
-        );
+        $this->registerPageRoutes();
 
         $this->loadValidationRules();
 
         if (file_exists($file = __DIR__ . '/helpers.php')) {
             require $file;
+        }
+    }
+
+    /**
+     * Register a UI route pair (GET /path and GET /path/content) for each
+     * configured swagger page. The page name is passed to the controller via
+     * a route default so the URL structure stays clean.
+     */
+    private function registerPageRoutes(): void
+    {
+        if (!Config::get('swagger.enable', true)) {
+            return;
+        }
+
+        $pages = Config::get('swagger.pages', []);
+
+        foreach ($pages as $name => $page) {
+            $path       = Arr::get($page, 'path', '/docs/' . $name);
+            $middleware = Arr::get($page, 'middleware', []);
+
+            Route::middleware($middleware)
+                ->prefix($path)
+                ->group(function () use ($name) {
+                    Route::get('', [SwaggerController::class, 'api'])
+                        ->defaults('_swagger_page', $name);
+
+                    Route::get('content', [SwaggerController::class, 'documentation'])
+                        ->defaults('_swagger_page', $name);
+                });
         }
     }
 

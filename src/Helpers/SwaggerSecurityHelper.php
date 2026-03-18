@@ -12,12 +12,11 @@ use Laravel\Passport\Passport;
 class SwaggerSecurityHelper
 {
     /**
-     * Get endpoint
+     * Build an absolute endpoint URL for OAuth2 flow paths.
      */
-    public static function getEndpoint(string $path): string
+    public static function getEndpoint(string $path, string $host): string
     {
-        $host = config('swagger.host');
-        if (!Str::startsWith($host, 'http://') || !Str::startsWith($host, 'https://')) {
+        if (!Str::startsWith($host, 'http://') && !Str::startsWith($host, 'https://')) {
             $schema = swagger_is_connection_secure() ? 'https://' : 'http://';
             $host = $schema.$host;
         }
@@ -25,46 +24,40 @@ class SwaggerSecurityHelper
     }
 
     /**
-     * Check whether specified middleware belongs to registered security middlewares
+     * Check whether the given middleware belongs to the page's security middlewares.
      */
-    public static function isSecurityMiddleware(Middleware $middleware): bool
+    public static function isSecurityMiddleware(Middleware $middleware, array $securityMiddlewares): bool
     {
-        return in_array("$middleware", config('swagger.security_middlewares'));
+        return in_array("$middleware", $securityMiddlewares);
     }
 
     /**
-     * Generate security definitions
-     * @return array[]
+     * Generate security scheme definitions for the given authentication flows.
      *
      * @throws InvalidAuthenticationFlow|InvalidDefinitionException
      */
-    public static function generateSecurityDefinitions(): array
+    public static function generateSecurityDefinitions(array $authenticationFlows, string $host): array
     {
-        $authenticationFlows = config('swagger.authentication_flow');
-
         $definitions = [];
 
         foreach ($authenticationFlows as $definition => $flow) {
             self::validateAuthenticationFlow($definition, $flow);
-            $definitions[$definition] = self::createSecurityDefinition($definition, $flow);
+            $definitions[$definition] = self::createSecurityDefinition($definition, $flow, $host);
         }
 
         return $definitions;
     }
 
     /**
-     * Create security definition
-     * @return string[]
+     * Create a single security definition entry.
      */
-    protected static function createSecurityDefinition(string $definition, string $flow): array
+    protected static function createSecurityDefinition(string $definition, string $flow, string $host): array
     {
         switch ($definition) {
             case 'OAuth2':
                 $definitionBody = [
                     'type' => 'oauth2',
-                    'flows' => [
-                        $flow => []
-                    ],
+                    'flows' => [$flow => []],
                 ];
                 $flowKey = 'flows.'.$flow.'.';
 
@@ -72,30 +65,35 @@ class SwaggerSecurityHelper
                     Arr::set(
                         $definitionBody,
                         $flowKey.'authorizationUrl',
-                        SwaggerSecurityHelper::getEndpoint('/oauth/authorize'));
+                        self::getEndpoint('/oauth/authorize', $host)
+                    );
                 }
 
                 if (in_array($flow, ['password', 'application', 'authorizationCode'])) {
                     Arr::set(
                         $definitionBody,
                         $flowKey.'tokenUrl',
-                        SwaggerSecurityHelper::getEndpoint('/oauth/token')
+                        self::getEndpoint('/oauth/token', $host)
                     );
                 }
+
                 Arr::set($definitionBody, $flowKey.'scopes', self::generateOAuthScopes());
+
                 return $definitionBody;
+
             case 'bearerAuth':
                 return [
                     'type' => $flow,
                     'scheme' => 'bearer',
-                    'bearerFormat' => 'JWT'
+                    'bearerFormat' => 'JWT',
                 ];
         }
+
         return [];
     }
 
     /**
-     * Validate selected authentication flow
+     * Validate the selected authentication flow.
      *
      * @throws InvalidAuthenticationFlow|InvalidDefinitionException
      */
@@ -103,24 +101,27 @@ class SwaggerSecurityHelper
     {
         $definitions = [
             'OAuth2' => ['password', 'application', 'implicit', 'authorizationCode'],
-            'bearerAuth' => ['http']
+            'bearerAuth' => ['http'],
         ];
 
         if (!Arr::has($definitions, $definition)) {
-            throw new InvalidDefinitionException('Invalid Definition, please select from the following: '.
-                implode(', ', array_keys($definitions)));
+            throw new InvalidDefinitionException(
+                'Invalid Definition, please select from the following: '.
+                implode(', ', array_keys($definitions))
+            );
         }
 
         $allowed = $definitions[$definition];
         if (!in_array($flow, $allowed)) {
             throw new InvalidAuthenticationFlow(
                 'Invalid Authentication Flow, please select one from the following: '.
-                implode(', ', $allowed));
+                implode(', ', $allowed)
+            );
         }
     }
 
     /**
-     * Generate OAuth scopes
+     * Generate OAuth scopes from Laravel Passport (if installed).
      */
     protected static function generateOAuthScopes(): array
     {

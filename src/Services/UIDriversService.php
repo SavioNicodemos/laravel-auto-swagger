@@ -2,47 +2,45 @@
 
 namespace AutoSwagger\Docs\Services;
 
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class UIDriversService
 {
-    protected $availableDrivers = [
+    protected array $availableDrivers = [
         'swagger-ui',
         'scalar',
-        'rapidoc'
+        'rapidoc',
     ];
 
-    protected $defaultDriver = 'swagger-ui';
-
-    public function getDefaultDriver(): string
-    {
-        $defaultRoute = Config::get('swagger.ui.default');
-
-        if (!in_array($defaultRoute, $this->availableDrivers)) {
-            Log::error(
-                "You passed a wrong driver to AutoSwagger UI config. Please review it, falling back to the default UI driver...",
-                ['swagger.ui.default' => $defaultRoute]
-            );
-            $defaultRoute = $this->defaultDriver;
-        }
-
-        return $defaultRoute;
-    }
+    protected string $defaultDriver = 'swagger-ui';
 
     public function getAvailableDrivers(): array
     {
         return $this->availableDrivers;
     }
 
-    public function getViewPath(): string
+    /**
+     * Return the Blade view path for the given UI driver.
+     * Falls back to the default driver if an invalid name is supplied.
+     *
+     * @throws InvalidArgumentException when the view file does not exist
+     */
+    public function getViewPath(string $driver): string
     {
-        $driver = $this->getDefaultDriver();
+        if (!in_array($driver, $this->availableDrivers)) {
+            Log::error(
+                'You passed an unsupported driver to AutoSwagger UI config. Falling back to the default UI driver.',
+                ['driver' => $driver]
+            );
+            $driver = $this->defaultDriver;
+        }
+
         $view = 'swagger::' . $driver;
 
         if (!View::exists($view)) {
-            throw new \InvalidArgumentException("View file for driver '$driver' does not exist.");
+            throw new InvalidArgumentException("View file for driver '$driver' does not exist.");
         }
 
         return $view;

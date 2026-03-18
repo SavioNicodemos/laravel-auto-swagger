@@ -112,14 +112,18 @@ class Generator
         $documentation = $this->generateBaseInformation();
         $applicationRoutes = $this->getApplicationRoutes();
 
-        $this->definitionGenerator = new DefinitionGenerator(Arr::get($this->ignored, 'models'));
+        $schemasPaths = array_values((array) $this->fromConfig('schemas', []));
+        $this->definitionGenerator = new DefinitionGenerator(Arr::get($this->ignored, 'models'), $schemasPaths);
         Arr::set($documentation, 'components.schemas', $this->definitionGenerator->generateSchemas());
 
         if ($this->fromConfig('parse.security', false) /*&& $this->hasOAuthRoutes($applicationRoutes)*/) {
             Arr::set(
                 $documentation,
                 'components.securitySchemes',
-                SwaggerSecurityHelper::generateSecurityDefinitions()
+                SwaggerSecurityHelper::generateSecurityDefinitions(
+                    $this->fromConfig('authentication_flow', []),
+                    $this->fromConfig('host', config('app.url', ''))
+                )
             );
             $this->hasSecurityDefinitions = true;
         }
@@ -519,8 +523,10 @@ class Generator
      */
     private function addActionScopes(array &$information, DataObjects\Route $route)
     {
+        $securityMiddlewares = $this->fromConfig('security_middlewares', []);
+
         foreach ($route->middleware() as $middleware) {
-            if (SwaggerSecurityHelper::isSecurityMiddleware($middleware)) {
+            if (SwaggerSecurityHelper::isSecurityMiddleware($middleware, $securityMiddlewares)) {
                 continue;
             }
 

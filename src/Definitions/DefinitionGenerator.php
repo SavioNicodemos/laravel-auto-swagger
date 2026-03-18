@@ -39,8 +39,12 @@ class DefinitionGenerator
 
     /**
      * DefinitionGenerator constructor.
+     *
+     * @param array $ignoredModels  Model class names to exclude from schema generation.
+     * @param array $schemasPaths   One or more directories containing custom schema classes.
+     *                              Each entry can point to a different module's Swagger/Schemas folder.
      */
-    public function __construct(array $ignoredModels = [])
+    public function __construct(array $ignoredModels = [], array $schemasPaths = [])
     {
         if (!ConfigHelper::shouldIgnoreAllModels()) {
             $this->models = collect(File::allFiles(app_path()))
@@ -74,42 +78,41 @@ class DefinitionGenerator
                 ->toArray();
         }
 
-        if (is_dir(config('swagger.schemas'))) {
-            $this->customSchemas = collect(File::allFiles(config('swagger.schemas')))
-                ->map(function ($item) {
-                    /**
-                     * @var object
-                     */
+        foreach ($schemasPaths as $schemasPath) {
+            if (!is_dir($schemasPath)) {
+                continue;
+            }
+
+            $pathSchemas = collect(File::allFiles($schemasPath))
+                ->map(function ($item) use ($schemasPath) {
                     $containerInstance = Container::getInstance();
                     $path = $item->getRelativePathName();
 
-                    // Get the class namespace
-                    $schemasDir = realpath(config('swagger.schemas'));
+                    $schemasDir  = realpath($schemasPath);
                     $relativeDir = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $schemasDir);
-                    $namespace = str_replace(DIRECTORY_SEPARATOR, '\\', $relativeDir);
+                    $namespace   = str_replace(DIRECTORY_SEPARATOR, '\\', $relativeDir);
 
-                    $class = sprintf(
+                    return sprintf(
                         '\%s%s\%s',
                         $containerInstance->getNamespace(),
                         $namespace,
                         strtr(substr($path, 0, strrpos($path, '.')), '/', '\\')
                     );
-
-                    return $class;
                 })
                 ->filter(function ($class) {
-                    $valid = false;
-
-                    if (class_exists($class)) {
-                        $reflection = new ReflectionClass($class);
-                        $valid = !$reflection->isAbstract();
+                    if (!class_exists($class)) {
+                        return false;
                     }
-
-                    return $valid;
+                    $reflection = new ReflectionClass($class);
+                    return !$reflection->isAbstract();
                 })
                 ->values()
                 ->toArray();
+
+            $this->customSchemas = array_merge($this->customSchemas, $pathSchemas);
         }
+
+        $this->customSchemas = array_unique($this->customSchemas);
 
         $this->annotationsHelper = new AnnotationsHelper();
     }

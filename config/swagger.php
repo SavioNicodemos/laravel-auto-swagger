@@ -4,11 +4,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Swagger Configuration
+    | Enable Swagger
     |--------------------------------------------------------------------------
     |
     | This option determines whether the Swagger UI and OpenAPI file routes
-    | are enabled or disabled. Disable it basically don't show the documentation
+    | are enabled or disabled. Disabling it hides the documentation UI
     | but you can still use commands to generate the OpenAPI file.
     |
     */
@@ -17,92 +17,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | API Title
-    |--------------------------------------------------------------------------
-    |
-    | This option determines the title of the API documentation. It is used
-    | in the OpenAPI file and in the `head>title` HTML tag of the UI.
-    |
-    */
-
-    'title' => env('APP_NAME', 'Application API Documentation'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Description
-    |--------------------------------------------------------------------------
-    |
-    | This option determines the description of the API documentation. It is
-    | used in the OpenAPI file only.
-    |
-    */
-
-    'description' => env('APP_DESCRIPTION', 'Documentation for the Application API'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Version
-    |--------------------------------------------------------------------------
-    |
-    | This option determines the version of the API documentation. It is used
-    | in the OpenAPI file only.
-    |
-    */
-
-    'version' => env('APP_VERSION', '1.0.0'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Host
-    |--------------------------------------------------------------------------
-    |
-    | This option determines the host of the API documentation. Used to generate
-    | the proper URL for the authentication flow.
-    |
-    */
-
-    'host' => env('APP_URL'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Base Path
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the base path for generating the API documentation.
-    | You can set it to the root path you prefer for your API documentation.
-    | Like for example "/api/v1" if you use api versioning.
-    | 
-    | One signal that you may need to change this config is when you notice 
-    | that all your routes are prefixed with "/api/v1" or "/v1" for example.
-    |
-    | Default: /api
-    |
-    */
-
-    'api_base_path' => env('SWAGGER_API_BASE_PATH', '/api'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Swagger Routes Path
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the path for accessing the Swagger UI.
-    | You can set it to the root path you prefer for your API documentation.
-    | Like for example "/docs" if you want to access the documentation at
-    | "http://yourapp.com/docs".
-    |
-    | Default: /docs
-    |
-    */
-
-    'path' => env('SWAGGER_PATH', '/docs'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Swagger Storage Path
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the path where the OpenAPI file will be stored.
+    | Base directory where generated OpenAPI files are stored.
+    | Each page generates its own file: {storage}/{page-name}.json
     |
     | Default: storage_path('swagger')
     |
@@ -115,7 +34,7 @@ return [
     | Views Path
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the path where the Swagger UI views are stored.
+    | Path where the Swagger UI views are stored (used when publishing views).
     |
     | Default: base_path('resources/views/vendor/swagger')
     |
@@ -125,14 +44,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Schemas Path
+    | Schemas Path (global default)
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the path where the custom schemas are stored. The
-    | schemas are used to generate custom responses in the documentation.
+    | Default path for custom schema classes, inherited by every page that
+    | does not define its own 'schemas' key.
     |
-    | The library will look for all PHP files in this directory, generate the
-    | schema and use it in the documentation.
+    | Each page can override this with a single path (string) or a list of
+    | paths (array) — useful for modularized projects where each module owns
+    | its own Swagger/Schemas directory.
     |
     | Default: app_path('Swagger/Schemas')
     |
@@ -142,68 +62,55 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Servers
+    | Parse Configurations
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the list of servers where the API can be accessed.
-    | It is used in the OpenAPI file only.
+    | 'docBlock': Whether to parse controller method docBlocks for summaries,
+    | descriptions, @Request and @Response annotations.
     |
-    | By default will set only the local app url with the API base path. But you
-    | can set it to an array of strings or an array of arrays with the keys
-    | "url" and "description".
-    |
-    | Example of a mixed array with two servers:
-    | [
-    |     'https://staging.example.com/api',
-    |
-    |     [
-    |         'url' => 'https://api.example.com/api',
-    |         'description' => 'Production Server'
-    |     ]
-    | ]
+    | 'security': Whether to parse security annotations to determine
+    | authentication requirements per route.
     |
     */
 
-    'servers' => env('APP_URL', false) ? [env('APP_URL') . env('SWAGGER_API_BASE_PATH', '/api')] : [],
+    'parse' => [
+        'docBlock' => true,
+        'security' => true,
+    ],
 
     /*
     |--------------------------------------------------------------------------
-    | Always Generate
+    | Schema Builders
     |--------------------------------------------------------------------------
     |
-    | This setting specifies whether the OpenAPI file should be generated
-    | every time the Swagger UI is accessed. If set to false, the OpenAPI
-    | file will be generated only if it does not exist.
-    |
-    | In production, it is recommended to set it to false, but it can be useful 
-    | to set it to true in development environments.
-    |
-    | Default: true
+    | Custom response schema builders shared across all pages.
+    | Keys are the type aliases used in @Response annotations.
+    | Values must implement AutoSwagger\Docs\Responses\SchemaBuilder.
     |
     */
 
-    'generated' => env('SWAGGER_GENERATE_ALWAYS', true),
+    'schema_builders' => [
+        'P' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelPaginateSchemaBuilder::class,
+        'SP' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelSimplePaginateSchemaBuilder::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------
-    | UI Driver
+    | UI Driver Configurations
     |--------------------------------------------------------------------------
     |
-    | The UI driver configurations to use for rendering the documentation.
-    |
-    | Supported: "swagger-ui", "scalar", "rapidoc"
+    | Framework-specific configuration for each supported UI driver.
+    | These apply globally; the driver used per page is set inside each page.
     |
     */
+
     'ui' => [
-        'default' => env('SWAGGER_UI_DRIVER', 'swagger-ui'),
-
         'configs' => [
             /**
-             * For more information about the configuration options, see:
              * https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/
              */
             'swagger-ui' => [
-                'layout' => "StandaloneLayout",
+                'layout' => 'StandaloneLayout',
                 'filter' => true,
                 'deepLinking' => true,
                 'displayRequestDuration' => true,
@@ -214,7 +121,6 @@ return [
             ],
 
             /**
-             * For more information about the configuration options, see:
              * https://github.com/scalar/scalar?tab=readme-ov-file#configuration
              */
             'scalar' => [
@@ -225,7 +131,6 @@ return [
             ],
 
             /**
-             * For more information about the configuration options, see:
              * https://rapidocweb.com/examples.html
              */
             'rapidoc' => [
@@ -243,52 +148,29 @@ return [
                 'colors' => [
                     'primary' => '#0f6ab4',
                     'header' => '', // Only available in dark mode
-                ]
-            ]
-        ]
-    ],
-
-    /*
-    |---------------------------------------------------------------------------
-    | Append
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the data that will be appended to all routes.
-    | It is used to add common responses to all routes.
-    |
-    */
-
-    'append' => [
-        'responses' => [
-            '401' => [
-                'description' => '(Unauthorized) Invalid or missing Access Token',
-                //'ref' => 'ExampleErrorSchema' <- You can use a schema reference
-            ]
+                ],
+            ],
         ],
-        'headers' => [
-            // 'Version' => [
-            //     'required' => true,
-            //     'description' => 'The version of the application',
-            //     'example' => '1.0.0',
-            //     'type' => 'string',
-            // ]
-        ]
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Ignored
+    | Global Ignored Items
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the list of ignored items (routes and methods).
-    | They will be hidden from the documentation.
+    | Routes and methods excluded from ALL pages. Each page can additionally
+    | exclude its own routes via its own 'ignored.routes' key.
+    |
+    | Swagger page routes are automatically excluded — no need to list them.
     |
     */
+
     'ignored' => [
         'methods' => [
             'head',
-            'options'
+            'options',
         ],
+
         'routes' => [
             'passport.authorizations.authorize',
             'passport.authorizations.approve',
@@ -306,137 +188,153 @@ return [
             'passport.personal.tokens.store',
             'passport.personal.tokens.destroy',
 
-
             '/_ignition/health-check',
             '/_ignition/execute-solution',
             '/_ignition/share-report',
             '/_ignition/scripts/{script}',
             '/_ignition/styles/{style}',
-            env('SWAGGER_PATH', '/docs'),
-            env('SWAGGER_PATH', '/docs') . '/content'
         ],
 
         'models' => [
-            // '*' // <- If add as first element, will ignore all Models
-        ]
+            // '*' // <- Uncomment to ignore all models
+        ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Tags
+    | Documentation Pages
     |--------------------------------------------------------------------------
     |
-    | This setting specifies the tags that will be used in the documentation.
-    | It is used to group the routes in the UI.
+    | Each entry registers one Swagger UI page with its own route, middleware,
+    | API scope, and documentation settings.
     |
-    | All the required tags are automatically generated from the routes, but
-    | this section is useful to add more tags or to add descriptions to them.
+    | Common use-cases:
+    |   - 'default'  → public-facing docs, no middleware, /api routes
+    |   - 'internal' → team docs, behind auth middleware, all routes
+    |
+    | Keys available per page:
+    |
+    |   title       - Page <title> and OpenAPI info.title
+    |   description - OpenAPI info.description
+    |   version     - OpenAPI info.version
+    |   host        - Base URL used to build OAuth2 endpoint URLs (defaults to APP_URL)
+    |   path        - URL prefix where this page is served  (e.g. /docs)
+    |   middleware   - Laravel middleware applied to the UI and content routes
+    |   api_base_path     - Route prefix filter; only routes starting with this are included
+    |   servers     - OpenAPI servers list (strings or {url, description} arrays)
+    |   generated   - true = regenerate on every request; false = serve cached file
+    |   ui_driver   - UI renderer: 'swagger-ui' | 'scalar' | 'rapidoc'
+    |   append      - Responses and headers appended to every operation
+    |   ignored     - Page-specific ignored routes (merged with global ignored.routes)
+    |   tags        - Manual tag definitions with optional descriptions
+    |   default_tags_generation_strategy - 'prefix' | 'controller' | any other = default tag
+    |   authentication_flow  - Auth schemes: ['bearerAuth' => 'http'] or ['OAuth2' => 'authorizationCode']
+    |   security_middlewares - Middleware names that mark a route as secured in the spec
     |
     */
-    'tags' => [
-        // [
-        //     'name' => 'Authentication',
-        //     'description' => 'Routes related to Authentication'
-        // ],
+
+    'pages' => [
+
+        'default' => [
+            'title' => env('APP_NAME', 'Application').' — API Documentation',
+            'description' => env('APP_DESCRIPTION', 'Documentation for the Application API'),
+            'version' => env('APP_VERSION', '1.0.0'),
+            'host' => env('APP_URL'),
+
+            'path' => env('SWAGGER_PATH', '/docs'),
+            'middleware' => [],
+
+            // Single directory — string:
+            'schemas' => app_path('Swagger/Schemas'),
+            // Multiple directories — array (useful for modularized projects):
+            // 'schemas' => [
+            //     app_path('Swagger/Schemas'),
+            //     base_path('modules/Orders/Swagger/Schemas'),
+            //     base_path('modules/Auth/Swagger/Schemas'),
+            // ],
+
+            'api_base_path' => env('SWAGGER_API_BASE_PATH', '/api'),
+
+            'servers' => env('APP_URL', false)
+                ? [env('APP_URL').env('SWAGGER_API_BASE_PATH', '/api')]
+                : [],
+
+            'generated' => env('SWAGGER_GENERATE_ALWAYS', true),
+            'ui_driver' => env('SWAGGER_UI_DRIVER', 'swagger-ui'),
+
+            'append' => [
+                'responses' => [
+                    '401' => [
+                        'description' => '(Unauthorized) Invalid or missing Access Token',
+                        //'ref' => 'ExampleErrorSchema'
+                    ],
+                ],
+                'headers' => [
+                    // 'Version' => [
+                    //     'required'    => true,
+                    //     'description' => 'The version of the application',
+                    //     'example'     => '1.0.0',
+                    //     'type'        => 'string',
+                    // ],
+                ],
+            ],
+
+            'ignored' => [
+                'routes' => [],
+            ],
+
+            'tags' => [
+                // ['name' => 'Authentication', 'description' => 'Routes related to Authentication'],
+            ],
+
+            'default_tags_generation_strategy' => env('SWAGGER_DEFAULT_TAGS_GENERATION_STRATEGY', 'prefix'),
+
+            'authentication_flow' => [
+                //'OAuth2'     => 'authorizationCode',
+                'bearerAuth' => 'http',
+            ],
+
+            'security_middlewares' => [
+                'auth:api',
+                'auth:sanctum',
+            ],
+        ],
+
+        /*
+        | Example: internal team page, protected by auth middleware
+        |
+        | 'internal' => [
+        |     'title'       => env('APP_NAME', 'Application') . ' — Internal Docs',
+        |     'description' => 'Full internal API reference for the development team',
+        |     'version'     => env('APP_VERSION', '1.0.0'),
+        |     'host'        => env('APP_URL'),
+        |
+        |     'path'       => '/docs/internal',
+        |     'middleware' => ['auth'],
+        |
+        |     'api_base_path' => '/',
+        |
+        |     'servers'   => [],
+        |     'generated' => env('SWAGGER_GENERATE_ALWAYS', true),
+        |     'ui_driver' => 'scalar',
+        |
+        |     'append' => [
+        |         'responses' => [],
+        |         'headers'   => [],
+        |     ],
+        |
+        |     'ignored' => [
+        |         'routes' => [],
+        |     ],
+        |
+        |     'tags'      => [],
+        |     'default_tags_generation_strategy' => 'prefix',
+        |
+        |     'authentication_flow'  => ['bearerAuth' => 'http'],
+        |     'security_middlewares' => ['auth:api', 'auth:sanctum'],
+        | ],
+        */
+
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Default Tag Generation Strategy
-    |--------------------------------------------------------------------------
-    |
-    | This configuration option defines the default strategy for generating tags.
-    |
-    | There are three available strategies:
-    | 
-    | 'prefix': This strategy uses the first non-null segment of the URI 
-    | (split by '/') as the tag.
-    |
-    | 'controller': This strategy uses the controller name as the tag,
-    | converting from camel case to words.
-    |
-    | Any other value: This will group all operations under a single tag named
-    | 'default'.
-    |
-    */
-
-    'default_tags_generation_strategy' => env('SWAGGER_DEFAULT_TAGS_GENERATION_STRATEGY', 'prefix'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Parse configurations
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the configurations for parsing the routes.
-    |
-    | 'docBlock': This setting specifies whether the library should parse the
-    | docBlock of the controller methods to get the description and the tags.
-    |
-    | 'security': This setting specifies whether the library should parse the
-    | security annotations to get the authentication flow.
-    |
-    */
-
-    'parse' => [
-        'docBlock' => true,
-        'security' => true,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Authentication Flow
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the authentication flow for the API.
-    |
-    | 'OAuth2': This setting configures the API to use the OAuth2 authentication.
-    |
-    | 'bearerAuth': This setting configures the API to use the Bearer
-    | authentication where you only pass the token and no other information.
-    |
-    */
-
-    'authentication_flow' => [
-        //'OAuth2' => 'authorizationCode',
-        'bearerAuth' => 'http',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Security Middlewares
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the list of security middlewares that will be used
-    | to protect the routes.
-    |
-    | The paths under these middlewares will be automatically marked as secured
-    | in the OpenAPI file.
-    |
-    */
-    'security_middlewares' => [
-        'auth:api',
-        'auth:sanctum',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Schema Builders
-    |--------------------------------------------------------------------------
-    |
-    | This setting specifies the list of schema builders that will be used
-    | to generate the custom responses in the documentation.
-    |
-    | The key is the type of the response and the value is the class that will
-    | generate the schema.
-    |
-    | If you can implement your own schema builder, see example in this existing
-    | implementation. But note that the custom Schema builders must implement
-    | "AutoSwagger\Docs\Responses\SchemaBuilder" interface.
-    |
-    */
-    'schema_builders' => [
-        'P' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelPaginateSchemaBuilder::class,
-        'SP' => \AutoSwagger\Docs\Responses\SchemaBuilders\LaravelSimplePaginateSchemaBuilder::class,
-    ]
 
 ];

@@ -53,8 +53,7 @@ class RouteHelper
      */
     public static function getRelativePathFromUri(string $uri, ?string $filter = null): ?string
     {
-        $basePath = $filter ?: config('swagger.api_base_path');
-        $relativePath = Str::replaceFirst($basePath, '', $uri);
+        $relativePath = Str::replaceFirst($filter ?? '', '', $uri);
         if ($relativePath === '') {
             $relativePath = '/';
         }

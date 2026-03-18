@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ config('swagger.title') }}</title>
+    <title>{{ $title }}</title>
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.36.0/swagger-ui.min.css" integrity="sha512-c9Fmh2rJWb5kaFhvVlPcBLrFdzrVXkdTofQAozw6MfOsC3DwN6pHrpqk9gm8qwJh9wURiK1Hv57/GxmzJzew8g==" crossorigin="anonymous" />
     <style>
