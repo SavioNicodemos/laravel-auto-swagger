@@ -23,7 +23,10 @@
         "phpdocumentor/reflection-docblock": "^5.2"
     },
     "require-dev": {
-        "laravel/passport": "^10.0"
+        "laravel/passport": "^12.0",
+        "phpunit/phpunit": "^10.0",
+        "orchestra/testbench": "^9.0",
+        "cebe/php-openapi": "^1.7"
     },
     "autoload": {
         "files": [
@@ -32,6 +35,15 @@
         "psr-4": {
             "AutoSwagger\\Docs\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AutoSwagger\\Docs\\Tests\\": "tests/",
+            "App\\": "tests/laravel/app/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     },
     "suggest": {
         "ext-yaml": "Required to generate YAML"
