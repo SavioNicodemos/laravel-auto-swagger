@@ -42,7 +42,10 @@ class PathParamsHelper
                 self::renameParamsInAllMethods($path, $changes);
 
                 Arr::set($documentation, 'paths.'.$relativePath, $path);
-                Arr::forget($documentation, $originalPathKey);
+
+                if ($relativePath !== $route) {
+                    Arr::forget($documentation, $originalPathKey);
+                }
             }
         }
     }
