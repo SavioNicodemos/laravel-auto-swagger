@@ -31,4 +31,36 @@ class ComplexNestedController extends Controller
     {
         return response()->json([]);
     }
+
+    /**
+     * Show a single flight wrapped in a data envelope.
+     *
+     * @Request({
+     *     "tags": ["flights"]
+     * })
+     * @Response({
+     *     "code": 200,
+     *     "ref": "D(FlightSearchResult)"
+     * })
+     */
+    public function show(): JsonResponse
+    {
+        return response()->json([]);
+    }
+
+    /**
+     * List available flights, each wrapped in a data envelope.
+     *
+     * @Request({
+     *     "tags": ["flights"]
+     * })
+     * @Response({
+     *     "code": 200,
+     *     "ref": "D(FlightSearchResult[])"
+     * })
+     */
+    public function list(): JsonResponse
+    {
+        return response()->json([]);
+    }
 }

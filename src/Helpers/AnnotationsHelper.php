@@ -94,14 +94,25 @@ class AnnotationsHelper
         if ($usesSchemaBuilder) {
             $matches = $this->getSchemaBuilderMatches($cleanedString);
 
+            $modelName = $matches[2];
+            $isArrayModel = Str::endsWith($modelName, '[]');
+            $cleanModelName = $isArrayModel ? Str::replaceLast('[]', '', $modelName) : $modelName;
+
             $schema = $this->generateCustomResponseSchema(
                 $matches[1],
-                $matches[2],
+                $cleanModelName,
                 $uri
             );
 
             if (\count($schema) > 0) {
-                $schemaBuilded = $schema;
+                if ($isArrayModel) {
+                    $schemaBuilded = [
+                        'type' => 'array',
+                        'items' => $schema,
+                    ];
+                } else {
+                    $schemaBuilded = $schema;
+                }
             }
         }
 
@@ -172,15 +183,15 @@ class AnnotationsHelper
 
     private function usesSchemaBuilder(string $value): bool
     {
-        // It will get names like SP(SchemaName)
-        return preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,})\))", $value) === 1;
+        // It will get names like SP(SchemaName) or SP(SchemaName[])
+        return preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,}(?:\[\])?)\))", $value) === 1;
     }
 
     private function getSchemaBuilderMatches(string $value): array
     {
         $matches = [];
 
-        preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,})\))", $value, $matches);
+        preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,}(?:\[\])?)\))", $value, $matches);
 
         return $matches;
     }

@@ -2,6 +2,7 @@
 
 namespace AutoSwagger\Docs\Tests\Feature;
 
+use App\Swagger\SchemaBuilders\DataWrapper;
 use AutoSwagger\Docs\Generator;
 use AutoSwagger\Docs\Helpers\ConfigHelper;
 use AutoSwagger\Docs\Tests\Fixtures\Controllers\ComplexNestedController;
@@ -57,6 +58,33 @@ class OpenApiValidationTest extends SchemaTestCase
         $valid = $openapi->validate();
 
         $this->assertTrue($valid, implode("\n", $openapi->getErrors()));
+    }
+
+    public function test_schema_builder_with_and_without_array_notation_in_response_produces_valid_openapi_3(): void
+    {
+        Route::get('/api/flight/{id}', [ComplexNestedController::class, 'show']);
+        Route::get('/api/flights', [ComplexNestedController::class, 'list']);
+
+        config(['swagger.schema_builders' => ['D' => DataWrapper::class]]);
+
+        $result = (new Generator($this->makeConfig([
+            'schemas' => [app_path('Swagger/Schemas')],
+            'schema_builders' => ['D' => DataWrapper::class],
+        ])))->generate();
+
+        // D(FlightSearchResult) — no array: schema builder result used directly
+        $showSchema = $result['paths']['/flight/{id}']['get']['responses'][200]['content']['application/json']['schema'];
+        $this->assertSame('object', $showSchema['type']);
+        $this->assertSame('#/components/schemas/FlightSearchResult', $showSchema['properties']['data']['$ref']);
+
+        // D(FlightSearchResult[]) — with array: schema builder result wrapped in array
+        $listSchema = $result['paths']['/flights']['get']['responses'][200]['content']['application/json']['schema'];
+        $this->assertSame('array', $listSchema['type']);
+        $this->assertSame('object', $listSchema['items']['type']);
+        $this->assertSame('#/components/schemas/FlightSearchResult', $listSchema['items']['properties']['data']['$ref']);
+
+        $openapi = Reader::readFromJson(json_encode($result));
+        $this->assertTrue($openapi->validate(), implode("\n", $openapi->getErrors()));
     }
 
     public function test_two_pages_generate_two_isolated_valid_openapi_3_documents(): void
