@@ -7,6 +7,7 @@ use AutoSwagger\Docs\Helpers\RouteHelper;
 use AutoSwagger\Docs\Helpers\SwaggerSecurityHelper;
 use Exception;
 use AutoSwagger\Docs\Exceptions\InvalidDefinitionException;
+use ReflectionClass;
 use ReflectionMethod;
 use ReflectionException;
 use Illuminate\Support\Arr;
@@ -302,9 +303,22 @@ class Generator
     private function getActionMethodInstance(DataObjects\Route $route): ?ReflectionMethod
     {
         [$class, $method] = Str::parseCallback($route->action());
-        if (!$class || !$method) {
+
+        if (!$class) {
             return null;
         }
+
+        if (!$method) {
+            try {
+                $reflection = new ReflectionClass($class);
+                return $reflection->hasMethod('__invoke')
+                    ? $reflection->getMethod('__invoke')
+                    : null;
+            } catch (ReflectionException $exception) {
+                return null;
+            }
+        }
+
         try {
             return new ReflectionMethod($class, $method);
         } catch (ReflectionException $exception) {
