@@ -51,22 +51,24 @@ class AnnotationsHelperTest extends SchemaTestCase
 
     // --- schema builder with array notation: D(SchemaName[]) ---
 
-    public function test_schema_builder_with_array_notation_wraps_built_schema_in_array(): void
+    public function test_schema_builder_with_array_notation_expands_ref_inside_builder_result_to_array(): void
     {
         [$arrayOfSchemas, $schemaBuilt] = $this->helper->parsedSchemas('D(FlightSearchResult[])');
 
         $this->assertNull($arrayOfSchemas);
         $this->assertNotNull($schemaBuilt);
-        $this->assertSame('array', $schemaBuilt['type']);
-        $this->assertSame('object', $schemaBuilt['items']['type']);
-        $this->assertSame('#/components/schemas/FlightSearchResult', $schemaBuilt['items']['properties']['data']['$ref']);
+        // The outer wrapper shape is preserved (object with data property)
+        $this->assertSame('object', $schemaBuilt['type']);
+        // The inner ref is expanded to an array schema
+        $this->assertSame('array', $schemaBuilt['properties']['data']['type']);
+        $this->assertSame('#/components/schemas/FlightSearchResult', $schemaBuilt['properties']['data']['items']['$ref']);
     }
 
-    public function test_schema_builder_with_array_strips_brackets_from_ref_passed_to_builder(): void
+    public function test_schema_builder_with_array_does_not_include_brackets_in_ref(): void
     {
         [$arrayOfSchemas, $schemaBuilt] = $this->helper->parsedSchemas('D(FlightSearchResult[])');
 
-        $ref = $schemaBuilt['items']['properties']['data']['$ref'];
+        $ref = $schemaBuilt['properties']['data']['items']['$ref'];
         $this->assertSame('#/components/schemas/FlightSearchResult', $ref);
         $this->assertStringNotContainsString('[]', $ref);
     }

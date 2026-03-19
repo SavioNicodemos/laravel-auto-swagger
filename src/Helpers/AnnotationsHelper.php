@@ -106,13 +106,10 @@ class AnnotationsHelper
 
             if (\count($schema) > 0) {
                 if ($isArrayModel) {
-                    $schemaBuilded = [
-                        'type' => 'array',
-                        'items' => $schema,
-                    ];
-                } else {
-                    $schemaBuilded = $schema;
+                    $modelRef = $this->toSwaggerSchemaPath($cleanModelName);
+                    $schema = $this->wrapModelRefAsArray($schema, $modelRef);
                 }
+                $schemaBuilded = $schema;
             }
         }
 
@@ -194,5 +191,22 @@ class AnnotationsHelper
         preg_match("(([A-Za-z]{1,})\(([A-Za-z]{1,}(?:\[\])?)\))", $value, $matches);
 
         return $matches;
+    }
+
+    private function wrapModelRefAsArray(array $schema, string $modelRef): array
+    {
+        foreach ($schema as $key => &$value) {
+            if (!is_array($value)) {
+                continue;
+            }
+
+            if (isset($value['$ref']) && $value['$ref'] === $modelRef) {
+                $value = ['type' => 'array', 'items' => ['$ref' => $modelRef]];
+            } else {
+                $value = $this->wrapModelRefAsArray($value, $modelRef);
+            }
+        }
+
+        return $schema;
     }
 }

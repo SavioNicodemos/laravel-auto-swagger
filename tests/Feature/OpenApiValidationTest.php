@@ -77,11 +77,11 @@ class OpenApiValidationTest extends SchemaTestCase
         $this->assertSame('object', $showSchema['type']);
         $this->assertSame('#/components/schemas/FlightSearchResult', $showSchema['properties']['data']['$ref']);
 
-        // D(FlightSearchResult[]) — with array: schema builder result wrapped in array
+        // D(FlightSearchResult[]) — with array: the ref inside the builder result is expanded to an array
         $listSchema = $result['paths']['/flights']['get']['responses'][200]['content']['application/json']['schema'];
-        $this->assertSame('array', $listSchema['type']);
-        $this->assertSame('object', $listSchema['items']['type']);
-        $this->assertSame('#/components/schemas/FlightSearchResult', $listSchema['items']['properties']['data']['$ref']);
+        $this->assertSame('object', $listSchema['type']);
+        $this->assertSame('array', $listSchema['properties']['data']['type']);
+        $this->assertSame('#/components/schemas/FlightSearchResult', $listSchema['properties']['data']['items']['$ref']);
 
         $openapi = Reader::readFromJson(json_encode($result));
         $this->assertTrue($openapi->validate(), implode("\n", $openapi->getErrors()));
