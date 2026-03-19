@@ -253,8 +253,18 @@ class DefinitionGenerator
             $data['properties'] = $schemaBuilded['properties'];
             $data['required'] = $schemaBuilded['required'];
         } else {
-            $data = []; // We need to reset the data when add $ref
-            $data['$ref'] = '#/components/schemas/' . $meta['ref'];
+            $ref = '#/components/schemas/' . $meta['ref'];
+            $preserved = array_filter(
+                array_intersect_key($data, array_flip(['description', 'nullable'])),
+                fn($v) => $v !== null && $v !== '' && $v !== false
+            );
+
+            if (!empty($preserved)) {
+                $data = $preserved;
+                $data['allOf'] = [['$ref' => $ref]];
+            } else {
+                $data = ['$ref' => $ref];
+            }
         }
     }
 
@@ -278,6 +288,8 @@ class DefinitionGenerator
             'example',
             'nullable',
             'format',
+            'enum',
+            'deprecated',
         ];
 
         foreach ($nativeKeys as $key) {

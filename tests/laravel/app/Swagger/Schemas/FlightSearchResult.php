@@ -56,4 +56,13 @@ class FlightSearchResult
      * })
      */
     public $links;
+
+    /**
+     * @Property({
+     *   "ref": "FlightDetails",
+     *   "nullable": true,
+     *   "description": "Alternative flight option"
+     * })
+     */
+    public $alternative_flight;
 }

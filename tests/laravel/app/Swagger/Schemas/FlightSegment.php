@@ -20,4 +20,19 @@ class FlightSegment
     static int $duration_minutes = 390;
 
     static ?string $aircraft_model = 'Boeing 787';
+
+    /**
+     * @Property({
+     *   "enum": ["economy", "business", "first"]
+     * })
+     */
+    static string $cabin_class = 'economy';
+
+    /**
+     * @Property({
+     *   "deprecated": true,
+     *   "description": "Use cabin_class instead"
+     * })
+     */
+    static string $class_of_service = 'economy';
 }
