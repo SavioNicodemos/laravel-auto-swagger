@@ -121,6 +121,8 @@ class BodyParametersGeneratorTest extends TestCase
         $this->assertContains('name', $schema['required']);
     }
 
+    // --- swagger_required ---
+
     public function test_it_respects_swagger_required_true(): void
     {
         $schema = $this->schema(['field' => 'swagger_required:true']);
@@ -133,6 +135,40 @@ class BodyParametersGeneratorTest extends TestCase
         $schema = $this->schema(['field' => 'swagger_required:false']);
 
         $this->assertArrayNotHasKey('required', $schema);
+    }
+
+    public function test_it_respects_bare_swagger_required_without_colon(): void
+    {
+        $schema = $this->schema(['field' => ['array', 'swagger_required']]);
+
+        $this->assertContains('field', $schema['required']);
+    }
+
+    public function test_swagger_required_overrides_missing_required_rule(): void
+    {
+        // field has no 'required' rule but swagger_required forces it
+        $schema = $this->schema(['field' => ['string', 'swagger_required:true']]);
+
+        $this->assertContains('field', $schema['required']);
+    }
+
+    public function test_swagger_required_false_overrides_required_rule(): void
+    {
+        // field has 'required' but swagger_required:false forces it out
+        $schema = $this->schema(['field' => ['required', 'string', 'swagger_required:false']]);
+
+        $this->assertArrayNotHasKey('required', $schema);
+    }
+
+    public function test_swagger_required_does_not_crash_with_object_rules(): void
+    {
+        $objectRule = new class {
+            public function __toString(): string { return 'custom_rule'; }
+        };
+
+        $schema = $this->schema(['field' => ['required', 'string', $objectRule]]);
+
+        $this->assertContains('field', $schema['required']);
     }
 
     public function test_it_applies_swagger_description(): void

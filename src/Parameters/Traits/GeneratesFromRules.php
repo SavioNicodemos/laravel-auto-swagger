@@ -156,7 +156,8 @@ trait GeneratesFromRules
         // Check for custom swagger_required rule first
         foreach ($parameterRules as $rule) {
             if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_required')) {
-                [$key, $value] = explode(':', $rule);
+                $parts = explode(':', (string) $rule, 2);
+                $value = $parts[1] ?? 'true';
                 return trim(strtolower($value)) === 'true';
             }
         }
@@ -208,8 +209,8 @@ trait GeneratesFromRules
     {
         foreach ($parameterRules as $rule) {
             if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_default')) {
-                [$key, $value] = explode(':', $rule);
-                return trim($value);
+                $parts = explode(':', (string) $rule, 2);
+                return isset($parts[1]) ? trim($parts[1]) : null;
             }
         }
         return null;
@@ -244,15 +245,15 @@ trait GeneratesFromRules
     {
         foreach ($parameterRules as $rule) {
             if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_min')) {
-                [$key, $value] = explode(':', $rule);
-                return trim($value);
+                $parts = explode(':', (string) $rule, 2);
+                return isset($parts[1]) ? trim($parts[1]) : null;
             }
         }
         return null;
     }
 
     /**
-     * Get min value
+     * Get max value
      * @param array $parameterRules
      * @return string|null
      */
@@ -260,8 +261,8 @@ trait GeneratesFromRules
     {
         foreach ($parameterRules as $rule) {
             if ((is_string($rule) || method_exists($rule, '__toString')) && Str::startsWith($rule, 'swagger_max')) {
-                [$key, $value] = explode(':', $rule);
-                return trim($value);
+                $parts = explode(':', (string) $rule, 2);
+                return isset($parts[1]) ? trim($parts[1]) : null;
             }
         }
         return null;
