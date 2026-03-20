@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Route;
-use Illuminate\Contracts\Config\Repository;
+use Illuminate\Config\Repository;
 use Illuminate\Foundation\Http\FormRequest;
 use phpDocumentor\Reflection\DocBlockFactory;
 use AutoSwagger\Docs\Definitions\DefinitionGenerator;
@@ -70,6 +70,26 @@ class Generator
     protected AnnotationsHelper $annotationsHelper;
 
     protected array $routeRenaming = [];
+
+    protected ?\Closure $consoleOutput = null;
+
+    /**
+     * Set a callback that writes warning messages to the terminal.
+     * Intended for CLI commands: ->setConsoleOutput(fn($msg) => $this->warn($msg))
+     */
+    public function setConsoleOutput(\Closure $output): static
+    {
+        $this->consoleOutput = $output;
+        return $this;
+    }
+
+    private function issueWarning(string $message): void
+    {
+        Log::warning($message);
+        if ($this->consoleOutput !== null) {
+            ($this->consoleOutput)($message);
+        }
+    }
 
     /**
      * Generator constructor.
@@ -139,7 +159,7 @@ class Generator
             if ($uri === null) {
                 continue;
             }
-            $pathKey = 'paths.'.$uri;
+            $pathKey = 'paths.' . $uri;
 
             if (!Arr::has($documentation, $pathKey)) {
                 Arr::set($documentation, $pathKey, []);
@@ -151,12 +171,15 @@ class Generator
                 if (in_array($method, Arr::get($this->ignored, 'methods'))) {
                     continue;
                 }
-                $methodKey = $pathKey.'.'.$method;
+                $methodKey = $pathKey . '.' . $method;
                 Arr::set($documentation, $methodKey, $this->generatePath($route, $method, $tagFromPrefix));
             }
         }
 
         PathParamsHelper::renamePaths($documentation, $this->routeRenaming);
+
+        $this->warnAboutUndefinedTags($documentation);
+        $this->warnAboutUnusedSchemas($documentation);
 
         return $documentation;
     }
@@ -198,7 +221,7 @@ class Generator
      */
     private function fromConfig(string $key, $default = null)
     {
-        return $this->configuration->get('swagger.'.$key, $default);
+        return $this->configuration->get('swagger.' . $key, $default);
     }
 
     /**
@@ -216,8 +239,11 @@ class Generator
                 if ($url) {
                     $servers[] = [
                         'url' => $url,
-                        'description' => $description ?: sprintf('%s Server #%d', $this->fromConfig('title'),
-                            $index + 1)
+                        'description' => $description ?: sprintf(
+                            '%s Server #%d',
+                            $this->fromConfig('title'),
+                            $index + 1
+                        )
                     ];
                 }
             } else {
@@ -231,7 +257,7 @@ class Generator
         if (count($servers) === 0) {
             $servers[] = [
                 'url' => config('app.url'),
-                'description' => config('app.name').' Main Server'
+                'description' => config('app.name') . ' Main Server'
             ];
         }
 
@@ -258,9 +284,9 @@ class Generator
         } catch (Exceptions\MultiplePathParamsException $e) {
             $message = sprintf(
                 "[AutoSwagger/Docs] Route '%s' has 'pathParams' changes more than once. When editing path params, please change in only one method/place and the changes will be applied to all methods of the route.",
-                $relativeUri);
-            Log::warning($message, ['route' => $route->uri()]);
-            dump($message);
+                $relativeUri
+            );
+            $this->issueWarning($message);
         }
 
         if ($this->hasSecurityDefinitions) {
@@ -281,6 +307,34 @@ class Generator
         }
 
         return $documentation;
+    }
+
+    private function warnAboutUndefinedTags(array $documentation): void
+    {
+        $configuredTags = $this->fromConfig('tags', []);
+
+        if (empty($configuredTags)) {
+            return;
+        }
+
+        $configuredTagNames = array_column($configuredTags, 'name');
+
+        $usedTags = [];
+        foreach (Arr::get($documentation, 'paths', []) as $methods) {
+            foreach ($methods as $operation) {
+                foreach (Arr::get($operation, 'tags', []) as $tag) {
+                    $usedTags[$tag] = true;
+                }
+            }
+        }
+
+        foreach (array_keys($usedTags) as $tag) {
+            if (!in_array($tag, $configuredTagNames)) {
+                $message = "[AutoSwagger/Docs] Tag '$tag' is used in an operation but is not defined in the global tags array. " .
+                    "Add it to the 'tags' key in your config/swagger.php to include a description.";
+                $this->issueWarning($message);
+            }
+        }
     }
 
     private function addTagsFromControllerName(array &$documentation, ?ReflectionMethod $actionMethodInstance): void
@@ -367,15 +421,17 @@ class Generator
                     $tagData = $this->annotationsHelper->parseRawDocumentationTag($rawTag);
                     $responseCode = '';
                     foreach ($tagData as $key => $value) {
-                        if (!in_array($key, ['code', 'description', 'ref'])) {
+                        if (!in_array($key, ['code', 'description', 'ref', 'content_type'])) {
                             continue;
                         }
 
                         if ($key === 'code') {
                             $responseCode = $value;
-                            $documentation['responses'][$value] = [
-                                'description' => '',
-                            ];
+                            if (!isset($documentation['responses'][$value])) {
+                                $documentation['responses'][$value] = [
+                                    'description' => '',
+                                ];
+                            }
                             continue;
                         }
 
@@ -399,6 +455,14 @@ class Generator
                             $ref = $this->toSwaggerModelPath($value);
                             $documentation['responses'][$responseCode]['content']['application/json']['schema']['$ref'] = $ref;
                         }
+                    }
+
+                    $contentType = $tagData['content_type'] ?? null;
+                    if ($contentType && $responseCode && !isset($documentation['responses'][$responseCode]['content'][$contentType])) {
+                        $documentation['responses'][$responseCode]['content'][$contentType]['schema'] = [
+                            'type'   => 'string',
+                            'format' => 'binary',
+                        ];
                     }
                 }
             }
@@ -447,7 +511,7 @@ class Generator
         }
 
         foreach ($this->append['responses'] as $code => $response) {
-            if (Arr::has($information, 'responses.'.$code)) {
+            if (Arr::has($information, 'responses.' . $code)) {
                 continue;
             }
 
@@ -498,7 +562,7 @@ class Generator
             $newResponse['description'] = $response['description'];
         }
 
-        Arr::set($information, 'responses.'.$code, $newResponse);
+        Arr::set($information, 'responses.' . $code, $newResponse);
     }
 
     /**
@@ -590,6 +654,48 @@ class Generator
                 return new Parameters\BodyParametersGenerator($rules);
             default:
                 return new Parameters\QueryParametersGenerator($rules);
+        }
+    }
+
+    /**
+     * Warn when a schema defined in components.schemas is never $ref-ed anywhere
+     * in the documentation (paths or other schemas).
+     */
+    private function warnAboutUnusedSchemas(array $documentation): void
+    {
+        $schemas = $this->definitionGenerator->getCustomSchemaNames();
+
+        if (empty($schemas)) {
+            return;
+        }
+
+        $referencedSchemas = [];
+        $this->collectReferencedSchemas($documentation, $referencedSchemas);
+
+        foreach ($schemas as $schemaName) {
+            if (!in_array($schemaName, $referencedSchemas, true)) {
+                $message = "[AutoSwagger/Docs] Schema '$schemaName' is defined but never referenced in any operation. " .
+                    "Consider removing it or referencing it via @Response or @Property.";
+                $this->issueWarning($message);
+            }
+        }
+    }
+
+    /**
+     * Recursively collect all schema names referenced via $ref in the documentation.
+     */
+    private function collectReferencedSchemas(mixed $data, array &$referencedSchemas): void
+    {
+        if (!is_array($data) && !is_object($data)) {
+            return;
+        }
+
+        foreach ((array) $data as $key => $value) {
+            if ($key === '$ref' && is_string($value) && str_starts_with($value, '#/components/schemas/')) {
+                $referencedSchemas[] = substr($value, strlen('#/components/schemas/'));
+            } else {
+                $this->collectReferencedSchemas($value, $referencedSchemas);
+            }
         }
     }
 }

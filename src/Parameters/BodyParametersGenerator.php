@@ -68,7 +68,7 @@ class BodyParametersGenerator implements ParametersGenerator
                 $nameTokens = explode('.', $parameter);
                 $this->addToProperties($properties,  $nameTokens, $parameterRules);
 
-                if ($this->isParameterRequired($parameterRules)) {
+                if ($this->isParameterRequired($parameterRules) && !str_contains($parameter, '.')) {
                     $required[] = $parameter;
                 }
             } catch (TypeError $e) {
@@ -83,6 +83,10 @@ class BodyParametersGenerator implements ParametersGenerator
 
         $this->cleanUpProperties($properties);
         $this->ensureNotUselessArrayOfArrays($properties);
+
+        if (empty($properties)) {
+            return [];
+        }
 
         Arr::set($schema, 'properties', $properties);
 
@@ -103,13 +107,13 @@ class BodyParametersGenerator implements ParametersGenerator
             }
         }
 
-
         return [
-            'content' =>  [
-                $mediaType  =>  [
-                    'schema' =>  $schema
-                ]
-            ]
+            'required' => true,
+            'content'  => [
+                $mediaType => [
+                    'schema' => $schema,
+                ],
+            ],
         ];
     }
 
@@ -254,10 +258,10 @@ class BodyParametersGenerator implements ParametersGenerator
             $localRequired = [];
             $this->addToProperties($properties[$name]['properties'], $nameTokens, $rules, $localRequired);
             if (count($localRequired) > 0) {
-                $properties[$name]['required'] = array_merge(
+                $properties[$name]['required'] = array_values(array_unique(array_merge(
                     $properties[$name]['required'] ?? [],
                     $localRequired
-                );
+                )));
             }
         }
     }

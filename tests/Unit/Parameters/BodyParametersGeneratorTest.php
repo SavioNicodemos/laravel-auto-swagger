@@ -163,7 +163,10 @@ class BodyParametersGeneratorTest extends TestCase
     public function test_swagger_required_does_not_crash_with_object_rules(): void
     {
         $objectRule = new class {
-            public function __toString(): string { return 'custom_rule'; }
+            public function __toString(): string
+            {
+                return 'custom_rule';
+            }
         };
 
         $schema = $this->schema(['field' => ['required', 'string', $objectRule]]);
@@ -492,5 +495,91 @@ class BodyParametersGeneratorTest extends TestCase
         $this->assertArrayNotHasKey('nullable', $items);
         $this->assertTrue($items['properties']['guest_id']['nullable']);
         $this->assertTrue($items['properties']['child_id']['nullable']);
+    }
+
+    // Empty properties → no requestBody
+
+    public function test_it_returns_empty_array_when_no_rules_given(): void
+    {
+        $params = (new BodyParametersGenerator([]))->getParameters();
+
+        $this->assertEmpty($params);
+    }
+
+    public function test_it_returns_empty_array_when_all_fields_are_hidden(): void
+    {
+        $params = (new BodyParametersGenerator([
+            'secret'  => 'required|string|swagger_hidden',
+            'api_key' => 'required|string|swagger_hidden',
+        ]))->getParameters();
+
+        $this->assertEmpty($params);
+    }
+
+    // No duplicate values in nested required
+
+    public function test_nested_required_has_no_duplicates_from_sibling_rules(): void
+    {
+        $schema = $this->schema([
+            'segments'                        => 'required|array',
+            'segments.*.items'                => 'required|array',
+            'segments.*.items.*.passenger_id' => 'required|string',
+            'segments.*.items.*.tariff_code'  => 'required|string',
+        ]);
+
+        // 'items' should appear exactly once inside the segment object required
+        $segmentRequired = $schema['properties']['segments']['items']['required'] ?? [];
+
+        $itemsCount = count(array_filter($segmentRequired, fn($r) => $r === 'items'));
+
+        $this->assertSame(1, $itemsCount, "'items' was duplicated in nested required: " . json_encode($segmentRequired));
+    }
+
+    // Top-level required must only contain root-level field names
+
+    public function test_top_level_required_does_not_contain_dotted_paths(): void
+    {
+        $schema = $this->schema([
+            'segments'          => 'required|array',
+            'segments.*.origin' => 'required|string',
+            'passengers'        => 'required|array',
+            'passengers.*.id'   => 'required|string',
+        ]);
+
+        $required = $schema['required'] ?? [];
+
+        $this->assertContains('segments', $required);
+        $this->assertContains('passengers', $required);
+        $this->assertNotContains('segments.*.origin', $required);
+        $this->assertNotContains('passengers.*.id', $required);
+    }
+
+    public function test_top_level_required_contains_only_root_field_names(): void
+    {
+        $schema = $this->schema([
+            'reference'   => 'required|string',
+            'contact'     => 'required|array',
+            'contact.email' => 'required|email',
+        ]);
+
+        foreach ($schema['required'] ?? [] as $field) {
+            $this->assertStringNotContainsString('.', $field, "Dotted path '$field' found in top-level required");
+        }
+    }
+
+    // RequestBody must be marked as required
+
+    public function test_request_body_is_marked_as_required_when_properties_exist(): void
+    {
+        $params = (new BodyParametersGenerator(['name' => 'string']))->getParameters();
+
+        $this->assertTrue($params['required'] ?? false);
+    }
+
+    public function test_request_body_required_is_true_for_multipart_form(): void
+    {
+        $params = (new BodyParametersGenerator(['avatar' => 'required|file']))->getParameters();
+
+        $this->assertTrue($params['required'] ?? false);
     }
 }

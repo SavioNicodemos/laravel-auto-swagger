@@ -129,6 +129,18 @@ class DefinitionGenerator
     }
 
     /**
+     * Get the short class names of schemas that were explicitly declared in
+     * the schemas folders (not auto-discovered Eloquent models).
+     */
+    function getCustomSchemaNames(): array
+    {
+        return array_map(
+            fn(string $class) => last(explode('\\', $class)),
+            $this->customSchemas
+        );
+    }
+
+    /**
      * Generate definitions information
      * @return array
      */

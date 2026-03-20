@@ -71,7 +71,9 @@ class GenerateSwaggerDocumentation extends Command
             $routeFilter = $filter ?: Arr::get($pageConfig, 'api_base_path');
 
             $repo          = new ConfigRepository(['swagger' => $pageConfig]);
-            $documentation = (new Generator($repo, $routeFilter))->generate();
+            $documentation = (new Generator($repo, $routeFilter))
+                ->setConsoleOutput(fn(string $msg) => $this->warn($msg))
+                ->generate();
             $formattedDocs = (new Formatter($documentation))->setFormat($format)->format();
 
             $file = $storagePath . DIRECTORY_SEPARATOR . $name . '.' . $format;
