@@ -48,8 +48,10 @@ class QueryParametersGenerator implements ParametersGenerator
             $parameterRules = $this->splitRules($rule);
             $enums = $this->getEnumValues($parameterRules);
             $type = $this->getParameterType($parameterRules);
+            $phpType = $type === 'number' ? 'float' : $type;
             $default = $this->getDefaultValue($parameterRules);
-            $example = $this->getExampleValue($parameterRules);
+            $exampleRaw = $this->getExampleValue($parameterRules);
+            $example = $exampleRaw !== '' ? $exampleRaw : null;
             $description = $this->getDescription($parameterRules);
             $min = $this->getMinValue($parameterRules);
             $max = $this->getMaxValue($parameterRules);
@@ -75,20 +77,20 @@ class QueryParametersGenerator implements ParametersGenerator
                 Arr::set($parameterObject, 'schema.type', $type);
             }
 
-            if ($default) {
-                settype($default, $type);
+            if ($default !== null) {
+                settype($default, $phpType);
                 Arr::set($parameterObject, 'schema.default', $default);
             }
-            if ($example) {
-                settype($example, $type);
+            if ($example !== null) {
+                settype($example, $phpType);
                 Arr::set($parameterObject, 'schema.example', $example);
             }
-            if ($min) {
-                settype($min, $type);
+            if ($min !== null) {
+                settype($min, $phpType);
                 Arr::set($parameterObject, 'schema.minimum', $min);
             }
-            if ($max) {
-                settype($max, $type);
+            if ($max !== null) {
+                settype($max, $phpType);
                 Arr::set($parameterObject, 'schema.maximum', $max);
             }
 

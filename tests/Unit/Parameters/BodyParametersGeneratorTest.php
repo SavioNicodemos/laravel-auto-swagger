@@ -234,6 +234,216 @@ class BodyParametersGeneratorTest extends TestCase
         $this->assertSame(120, $schema['properties']['age']['maximum']);
     }
 
+    // --- numeric type ---
+
+    public function test_it_generates_number_type_for_numeric_rule(): void
+    {
+        $schema = $this->schema(['price' => 'numeric']);
+
+        $this->assertSame('number', $schema['properties']['price']['type']);
+    }
+
+    // --- integer constraints ---
+
+    public function test_it_applies_multiple_of_for_integer(): void
+    {
+        $schema = $this->schema(['quantity' => 'integer|multiple_of:5']);
+
+        $this->assertSame(5, $schema['properties']['quantity']['multipleOf']);
+    }
+
+    public function test_it_applies_swagger_min_override_for_integer(): void
+    {
+        $schema = $this->schema(['score' => 'integer|swagger_min:10']);
+
+        $this->assertSame('10', $schema['properties']['score']['minimum']);
+    }
+
+    public function test_it_applies_swagger_max_override_for_integer(): void
+    {
+        $schema = $this->schema(['score' => 'integer|swagger_max:100']);
+
+        $this->assertSame('100', $schema['properties']['score']['maximum']);
+    }
+
+    // --- string constraints ---
+
+    public function test_it_applies_swagger_min_override_for_string(): void
+    {
+        $schema = $this->schema(['code' => 'string|swagger_min:3']);
+
+        $this->assertSame('3', $schema['properties']['code']['minLength']);
+    }
+
+    public function test_it_applies_swagger_max_override_for_string(): void
+    {
+        $schema = $this->schema(['code' => 'string|swagger_max:10']);
+
+        $this->assertSame('10', $schema['properties']['code']['maxLength']);
+    }
+
+    // --- string formats ---
+
+    public function test_it_sets_uri_format_for_url_rule(): void
+    {
+        $schema = $this->schema(['website' => 'string|url']);
+
+        $this->assertSame('uri', $schema['properties']['website']['format']);
+    }
+
+    public function test_it_sets_ip_format(): void
+    {
+        $schema = $this->schema(['address' => 'string|ip']);
+
+        $this->assertSame('ip', $schema['properties']['address']['format']);
+    }
+
+    public function test_it_sets_ipv4_format(): void
+    {
+        $schema = $this->schema(['address' => 'string|ipv4']);
+
+        $this->assertSame('ipv4', $schema['properties']['address']['format']);
+    }
+
+    public function test_it_sets_ipv6_format(): void
+    {
+        $schema = $this->schema(['address' => 'string|ipv6']);
+
+        $this->assertSame('ipv6', $schema['properties']['address']['format']);
+    }
+
+    public function test_it_sets_json_format(): void
+    {
+        $schema = $this->schema(['payload' => 'string|json']);
+
+        $this->assertSame('json', $schema['properties']['payload']['format']);
+    }
+
+    public function test_it_sets_password_format(): void
+    {
+        $schema = $this->schema(['secret' => 'string|password']);
+
+        $this->assertSame('password', $schema['properties']['secret']['format']);
+    }
+
+    public function test_it_sets_date_format_for_date_rule(): void
+    {
+        $schema = $this->schema(['dob' => 'string|date']);
+
+        $this->assertSame('date', $schema['properties']['dob']['format']);
+    }
+
+    public function test_it_sets_date_format_for_after_rule(): void
+    {
+        $schema = $this->schema(['start_date' => 'string|after:today']);
+
+        $this->assertSame('date', $schema['properties']['start_date']['format']);
+    }
+
+    public function test_it_sets_date_format_for_before_rule(): void
+    {
+        $schema = $this->schema(['end_date' => 'string|before:2030-01-01']);
+
+        $this->assertSame('date', $schema['properties']['end_date']['format']);
+    }
+
+    public function test_it_sets_pattern_for_regex_rule(): void
+    {
+        $schema = $this->schema(['code' => 'string|regex:/^[A-Z]{3}$/']);
+
+        $this->assertSame('/^[A-Z]{3}$/', $schema['properties']['code']['pattern']);
+    }
+
+    // --- array defaults ---
+
+    public function test_array_with_no_child_rule_defaults_items_to_string(): void
+    {
+        $schema = $this->schema(['tags' => 'array']);
+
+        $this->assertSame('array', $schema['properties']['tags']['type']);
+        $this->assertSame('string', $schema['properties']['tags']['items']['type']);
+    }
+
+    // --- swagger_hidden ---
+
+    public function test_swagger_hidden_excludes_field_from_properties(): void
+    {
+        $schema = $this->schema([
+            'name'       => 'required|string',
+            'secret_key' => 'required|string|swagger_hidden',
+        ]);
+
+        $this->assertArrayHasKey('name', $schema['properties']);
+        $this->assertArrayNotHasKey('secret_key', $schema['properties']);
+    }
+
+    public function test_swagger_hidden_field_is_not_in_required_list(): void
+    {
+        $schema = $this->schema([
+            'name'       => 'required|string',
+            'secret_key' => 'required|string|swagger_hidden',
+        ]);
+
+        $this->assertContains('name', $schema['required']);
+        $this->assertNotContains('secret_key', $schema['required'] ?? []);
+    }
+
+    public function test_swagger_hidden_on_parent_excludes_children_too(): void
+    {
+        $schema = $this->schema([
+            'meta'        => 'array|swagger_hidden',
+            'meta.source' => 'string',
+            'name'        => 'required|string',
+        ]);
+
+        $this->assertArrayNotHasKey('meta', $schema['properties']);
+        $this->assertArrayHasKey('name', $schema['properties']);
+    }
+
+    // --- nested structures ---
+
+    public function test_it_generates_deeply_nested_object(): void
+    {
+        $schema = $this->schema([
+            'order'                  => 'required|array',
+            'order.address'          => 'required|array',
+            'order.address.street'   => 'required|string',
+        ]);
+
+        $street = $schema['properties']['order']['properties']['address']['properties']['street'] ?? null;
+
+        $this->assertNotNull($street);
+        $this->assertSame('string', $street['type']);
+    }
+
+    public function test_required_fields_inside_nested_object_are_tracked(): void
+    {
+        $schema = $this->schema([
+            'contact'            => 'required|array',
+            'contact.first_name' => 'required|string',
+            'contact.last_name'  => 'required|string',
+            'contact.bio'        => 'string',
+        ]);
+
+        $required = $schema['properties']['contact']['required'] ?? [];
+
+        $this->assertContains('first_name', $required);
+        $this->assertContains('last_name', $required);
+        $this->assertNotContains('bio', $required);
+    }
+
+    public function test_swagger_description_is_applied_to_nested_child(): void
+    {
+        $schema = $this->schema([
+            'contact'       => 'required|array',
+            'contact.email' => ['required', 'email', 'swagger_description:Primary contact email'],
+        ]);
+
+        $description = $schema['properties']['contact']['properties']['email']['description'] ?? null;
+
+        $this->assertSame('Primary contact email', $description);
+    }
+
     // --- nullable does not leak to intermediate array items wrapper ---
 
     public function test_nullable_child_does_not_make_items_wrapper_nullable(): void

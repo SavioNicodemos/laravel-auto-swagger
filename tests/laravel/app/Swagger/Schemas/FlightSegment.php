@@ -35,4 +35,48 @@ class FlightSegment
      * })
      */
     static string $class_of_service = 'economy';
+
+    /**
+     * @Property({
+     *   "format": "date"
+     * })
+     */
+    static string $scheduled_date = '2024-06-15';
+
+    static ?bool $is_codeshare = false;
+
+    /**
+     * @Property({
+     *   "arrayOf": "integer"
+     * })
+     */
+    static array $stop_numbers;
+
+    /**
+     * @Property({
+     *   "nullable": true
+     * })
+     */
+    static string $booking_class = 'Y';
+
+    /**
+     * @Property({
+     *   "example": "LA"
+     * })
+     */
+    static string $carrier_code = 'XX';
+
+    /**
+     * @Property({
+     *   "type": "string"
+     * })
+     */
+    static int $seat_number = 15;
+
+    /**
+     * @Property({
+     *   "raw": {"type": "string", "format": "uri"}
+     * })
+     */
+    static string $booking_url = 'https://example.com';
 }

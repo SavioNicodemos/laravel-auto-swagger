@@ -10,6 +10,7 @@ class DefinitionGeneratorTest extends SchemaTestCase
     private array $schemas;
     private array $flightSearchResult;
     private array $flightSegment;
+    private array $flightDetails;
 
     protected function setUp(): void
     {
@@ -19,6 +20,147 @@ class DefinitionGeneratorTest extends SchemaTestCase
         $this->schemas = (array) $generator->generateSchemas();
         $this->flightSearchResult = (array) $this->schemas['FlightSearchResult']['properties'];
         $this->flightSegment = (array) $this->schemas['FlightSegment']['properties'];
+        $this->flightDetails = (array) $this->schemas['FlightDetails']['properties'];
+    }
+
+    // --- schema structure ---
+
+    public function test_schema_has_type_object(): void
+    {
+        $this->assertSame('object', $this->schemas['FlightSearchResult']['type']);
+    }
+
+    public function test_schema_required_array_is_present_and_correct(): void
+    {
+        $required = $this->schemas['FlightSearchResult']['required'] ?? [];
+
+        $this->assertContains('flight_id', $required);
+        $this->assertContains('flight_number', $required);
+        $this->assertContains('segments', $required);
+        $this->assertContains('links', $required);
+    }
+
+    public function test_schema_required_does_not_include_optional_properties(): void
+    {
+        $required = $this->schemas['FlightSearchResult']['required'] ?? [];
+
+        $this->assertNotContains('session_token', $required);
+        $this->assertNotContains('currency_code', $required);
+        $this->assertNotContains('connecting_flight', $required);
+    }
+
+    public function test_schema_without_required_annotation_omits_required_key(): void
+    {
+        $this->assertArrayNotHasKey('required', $this->schemas['FlightStatus']);
+    }
+
+    // --- PHP type → swagger type mapping ---
+
+    public function test_php_int_maps_to_swagger_integer(): void
+    {
+        $this->assertSame('integer', $this->flightDetails['stops']['type']);
+    }
+
+    public function test_php_bool_maps_to_swagger_boolean(): void
+    {
+        $this->assertSame('boolean', $this->flightSearchResult['is_available']['type']);
+    }
+
+    public function test_php_string_maps_to_swagger_string(): void
+    {
+        $this->assertSame('string', $this->flightDetails['origin_code']['type']);
+    }
+
+    // --- static property value → auto example ---
+
+    public function test_static_integer_value_is_auto_populated_as_example(): void
+    {
+        $this->assertSame(0, $this->flightDetails['stops']['example']);
+    }
+
+    public function test_static_string_value_is_auto_populated_as_example(): void
+    {
+        $this->assertSame('GRU', $this->flightDetails['origin_code']['example']);
+    }
+
+    public function test_static_bool_value_is_auto_populated_as_example(): void
+    {
+        $this->assertSame(true, $this->flightSearchResult['is_available']['example']);
+    }
+
+    // --- nullable PHP type auto-detection ---
+
+    public function test_nullable_php_type_sets_nullable_true(): void
+    {
+        $this->assertTrue($this->flightSearchResult['session_token']['nullable']);
+    }
+
+    public function test_non_nullable_php_type_does_not_set_nullable(): void
+    {
+        $this->assertArrayNotHasKey('nullable', $this->flightDetails['stops']);
+    }
+
+    // --- @Property format ---
+
+    public function test_property_format_annotation_is_applied(): void
+    {
+        $this->assertSame('date', $this->flightSegment['scheduled_date']['format']);
+    }
+
+    public function test_property_format_preserves_base_type(): void
+    {
+        $this->assertSame('string', $this->flightSegment['scheduled_date']['type']);
+    }
+
+    // --- @Property example override ---
+
+    public function test_property_example_annotation_overrides_static_value(): void
+    {
+        // static value is 'XX', @Property example is 'LA'
+        $this->assertSame('LA', $this->flightSegment['carrier_code']['example']);
+    }
+
+    // --- @Property type override ---
+
+    public function test_property_type_annotation_overrides_php_inferred_type(): void
+    {
+        // PHP type is int, @Property says "type": "string"
+        $this->assertSame('string', $this->flightSegment['seat_number']['type']);
+    }
+
+    // --- @Property nullable on non-nullable PHP property ---
+
+    public function test_property_nullable_annotation_sets_nullable_on_non_nullable_php_type(): void
+    {
+        $this->assertTrue($this->flightSegment['booking_class']['nullable']);
+    }
+
+    // --- @Property nullable via PHP nullable type (no annotation) ---
+
+    public function test_nullable_php_type_in_schema_sets_nullable(): void
+    {
+        $this->assertTrue($this->flightSegment['is_codeshare']['nullable']);
+    }
+
+    // --- @Property arrayOf ---
+
+    public function test_property_array_of_sets_items_type(): void
+    {
+        $this->assertSame('array', $this->flightSegment['stop_numbers']['type']);
+        $this->assertSame('integer', $this->flightSegment['stop_numbers']['items']['type']);
+    }
+
+    // --- @Property raw passthrough ---
+
+    public function test_property_raw_returns_value_without_any_processing(): void
+    {
+        $raw = $this->flightSegment['booking_url'];
+
+        $this->assertSame('string', $raw['type']);
+        $this->assertSame('uri', $raw['format']);
+        // raw skips createBaseData, so no description or nullable keys
+        $this->assertArrayNotHasKey('description', $raw);
+        $this->assertArrayNotHasKey('nullable', $raw);
     }
 
     // --- plain ref (no extras) → bare $ref ---
@@ -105,6 +247,19 @@ class DefinitionGeneratorTest extends SchemaTestCase
 
         $this->assertSame('string', $prop['type']);
         $this->assertSame('Use cabin_class instead', $prop['description']);
+    }
+
+    // --- ref + description only (no nullable) → allOf with description ---
+
+    public function test_ref_with_description_only_produces_allOf_and_preserves_description(): void
+    {
+        $conn = $this->flightSearchResult['connecting_flight'];
+
+        $this->assertSame('Connecting flight option', $conn['description']);
+        $this->assertArrayHasKey('allOf', $conn);
+        $this->assertSame('#/components/schemas/FlightDetails', $conn['allOf'][0]['$ref']);
+        $this->assertArrayNotHasKey('$ref', $conn);
+        $this->assertArrayNotHasKey('nullable', $conn);
     }
 
     // --- ref[] (array) → type + items, no allOf ---

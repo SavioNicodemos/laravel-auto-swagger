@@ -60,4 +60,52 @@ class PathParametersGeneratorTest extends TestCase
             $this->assertTrue($param['required']);
         }
     }
+
+    public function test_each_path_parameter_has_empty_description(): void
+    {
+        $generator = new PathParametersGenerator('/api/users/{id}');
+        $params    = $generator->getParameters();
+
+        $this->assertArrayHasKey('description', $params[0]);
+        $this->assertSame('', $params[0]['description']);
+    }
+
+    public function test_optional_path_parameter_is_still_marked_required(): void
+    {
+        $generator = new PathParametersGenerator('/api/users/{id?}');
+        $params    = $generator->getParameters();
+
+        $this->assertTrue($params[0]['required']);
+    }
+
+    public function test_mixed_optional_and_non_optional_parameters_are_both_required(): void
+    {
+        $generator = new PathParametersGenerator('/api/users/{userId}/posts/{postId?}');
+        $params    = $generator->getParameters();
+
+        $this->assertCount(2, $params);
+        $this->assertSame('userId', $params[0]['name']);
+        $this->assertSame('postId', $params[1]['name']);
+        $this->assertTrue($params[0]['required']);
+        $this->assertTrue($params[1]['required']);
+    }
+
+    public function test_each_path_parameter_schema_type_is_string(): void
+    {
+        $generator = new PathParametersGenerator('/api/users/{id}/orders/{orderId}');
+        $params    = $generator->getParameters();
+
+        foreach ($params as $param) {
+            $this->assertSame('string', $param['schema']['type']);
+        }
+    }
+
+    public function test_uri_with_only_a_path_parameter(): void
+    {
+        $generator = new PathParametersGenerator('/{id}');
+        $params    = $generator->getParameters();
+
+        $this->assertCount(1, $params);
+        $this->assertSame('id', $params[0]['name']);
+    }
 }

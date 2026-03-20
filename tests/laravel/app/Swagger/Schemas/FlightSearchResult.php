@@ -65,4 +65,12 @@ class FlightSearchResult
      * })
      */
     public $alternative_flight;
+
+    /**
+     * @Property({
+     *   "ref": "FlightDetails",
+     *   "description": "Connecting flight option"
+     * })
+     */
+    public $connecting_flight;
 }
