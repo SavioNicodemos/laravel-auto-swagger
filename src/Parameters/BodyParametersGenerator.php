@@ -48,9 +48,23 @@ class BodyParametersGenerator implements ParametersGenerator
 
         $schema = [];
 
+        $hiddenRoots = [];
+        foreach ($this->rules as $parameter => $rule) {
+            $parameterRules = $this->splitRules($rule);
+            if ($this->isSwaggerHidden($parameterRules)) {
+                $hiddenRoots[] = explode('.', $parameter)[0];
+            }
+        }
+
         foreach ($this->rules as $parameter => $rule) {
             try {
                 $parameterRules = $this->splitRules($rule);
+                $rootField = explode('.', $parameter)[0];
+
+                if ($this->isSwaggerHidden($parameterRules) || in_array($rootField, $hiddenRoots)) {
+                    continue;
+                }
+
                 $nameTokens = explode('.', $parameter);
                 $this->addToProperties($properties,  $nameTokens, $parameterRules);
 

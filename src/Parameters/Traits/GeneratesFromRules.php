@@ -281,4 +281,14 @@ trait GeneratesFromRules
         }
         return false;
     }
+
+    protected function isSwaggerHidden(array $parameterRules): bool
+    {
+        foreach ($parameterRules as $rule) {
+            if ((is_string($rule) || method_exists($rule, '__toString')) && (string) $rule === 'swagger_hidden') {
+                return true;
+            }
+        }
+        return false;
+    }
 }

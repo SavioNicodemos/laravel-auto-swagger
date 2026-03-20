@@ -74,4 +74,59 @@ class FakeControllerTest extends TestCase
         $this->assertContains('user', $schema['properties']['role']['enum']);
         $this->assertContains('moderator', $schema['properties']['role']['enum']);
     }
+
+    // --- swagger_hidden ---
+
+    private function filterSchema(): array
+    {
+        Route::post('/api/users/filter', [FakeController::class, 'filter']);
+        $result = (new Generator($this->makeConfig()))->generate();
+        return $result['paths']['/users/filter']['post']['requestBody']['content']['application/json']['schema'];
+    }
+
+    public function test_swagger_hidden_scalar_field_is_excluded_from_request_body(): void
+    {
+        $schema = $this->filterSchema();
+
+        $this->assertArrayNotHasKey('tracking_id', $schema['properties']);
+    }
+
+    public function test_swagger_hidden_field_is_not_in_required_list(): void
+    {
+        $schema = $this->filterSchema();
+
+        $this->assertNotContains('tracking_id', $schema['required'] ?? []);
+    }
+
+    public function test_swagger_hidden_array_parent_is_excluded_from_request_body(): void
+    {
+        $schema = $this->filterSchema();
+
+        $this->assertArrayNotHasKey('address', $schema['properties']);
+    }
+
+    public function test_child_rules_of_hidden_parent_are_also_excluded(): void
+    {
+        $schema = $this->filterSchema();
+
+        // address.city and address.zip should not appear as top-level or nested keys
+        $this->assertArrayNotHasKey('address', $schema['properties']);
+        $this->assertArrayNotHasKey('city', $schema['properties']);
+        $this->assertArrayNotHasKey('zip', $schema['properties']);
+    }
+
+    public function test_non_hidden_fields_remain_in_request_body(): void
+    {
+        $schema = $this->filterSchema();
+
+        $this->assertArrayHasKey('tag_ids', $schema['properties']);
+    }
+
+    public function test_children_of_visible_array_field_are_not_affected(): void
+    {
+        $schema = $this->filterSchema();
+
+        $this->assertArrayHasKey('tag_ids', $schema['properties']);
+        $this->assertSame('array', $schema['properties']['tag_ids']['type']);
+    }
 }
