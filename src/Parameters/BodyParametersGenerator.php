@@ -224,15 +224,16 @@ class BodyParametersGenerator implements ParametersGenerator
         }
 
         if (!Arr::has($properties, $name)) {
-            $propertyObject = $this->createNewPropertyObject($type, $rules);
+            $leafRules = empty($nameTokens) ? $rules : [];
+            $propertyObject = $this->createNewPropertyObject($type, $leafRules);
             if ($type === 'object' && !empty($nameTokens)) {
                 $propertyObject['properties'] = [];
                 unset($propertyObject['items']);
             }
             Arr::set($properties, $name, $propertyObject);
-            $extra = $this->getParameterExtra($type, $rules);
+            $extra = $this->getParameterExtra($type, $leafRules);
 
-            $this->getCustomSwaggerRules($extra, $rules, $type);
+            $this->getCustomSwaggerRules($extra, $leafRules, $type);
 
             foreach ($extra as $key => $value) {
                 Arr::set($properties, $name . '.' . $key, $value);

@@ -197,4 +197,54 @@ class BodyParametersGeneratorTest extends TestCase
 
         $this->assertSame(120, $schema['properties']['age']['maximum']);
     }
+
+    // --- nullable does not leak to intermediate array items wrapper ---
+
+    public function test_nullable_child_does_not_make_items_wrapper_nullable(): void
+    {
+        $schema = $this->schema([
+            'passengers'           => ['required', 'array'],
+            'passengers.*.guest_id' => ['nullable', 'integer'],
+        ]);
+
+        $items = $schema['properties']['passengers']['items'];
+
+        $this->assertArrayNotHasKey('nullable', $items);
+    }
+
+    public function test_nullable_is_still_applied_to_the_leaf_field(): void
+    {
+        $schema = $this->schema([
+            'passengers'            => ['required', 'array'],
+            'passengers.*.guest_id' => ['nullable', 'integer'],
+        ]);
+
+        $guestId = $schema['properties']['passengers']['items']['properties']['guest_id'];
+
+        $this->assertTrue($guestId['nullable']);
+    }
+
+    public function test_nullable_on_the_array_itself_is_preserved(): void
+    {
+        $schema = $this->schema([
+            'passengers' => ['nullable', 'array'],
+        ]);
+
+        $this->assertTrue($schema['properties']['passengers']['nullable']);
+    }
+
+    public function test_multiple_nullable_children_do_not_pollute_items_wrapper(): void
+    {
+        $schema = $this->schema([
+            'passengers'            => ['required', 'array'],
+            'passengers.*.guest_id' => ['nullable', 'integer'],
+            'passengers.*.child_id' => ['nullable', 'integer'],
+        ]);
+
+        $items = $schema['properties']['passengers']['items'];
+
+        $this->assertArrayNotHasKey('nullable', $items);
+        $this->assertTrue($items['properties']['guest_id']['nullable']);
+        $this->assertTrue($items['properties']['child_id']['nullable']);
+    }
 }
