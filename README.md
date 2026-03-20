@@ -11,13 +11,14 @@ The set of functions that this package has are included:
 
 1. OAS3 support (with constant verifications to ensure syntax and compatibility)
 1. Custom decorators
-1. Custom responses
-1. Custom Schemas
+1. Custom responses with support for multiple content types per status code
+1. Custom Schemas with `@Schema` and `@Property` annotations
 1. Custom Schema builders
 1. Automatic Parameters generation based on path and Form Request classes
 1. Inclusion of Swagger UI with option to select between different UI drivers
-1. Automatic Schema generations by Models or custom Schema classes.
-1. Generate operation tags based on route prefix or controller's name
+1. Automatic Schema generation from Eloquent Models or custom Schema classes
+1. Generate operation tags based on route prefix or controller name
+1. Developer warnings for undefined tags and unreferenced custom schemas
 
 ## Installation
 
@@ -37,24 +38,27 @@ php artisan vendor:publish --provider "AutoSwagger\Docs\SwaggerServiceProvider"
 
 ## Usage
 
-Laravel Auto Swagger Docs works based on recommended practices by Laravel. It will parse your routes and generate a path object for each one. If you inject Form Request classes in your controller's actions as request validation, it will also generate the parameters for each request that has them. For the parameters, it will take into account wether the request is a GET/HEAD/DELETE or a POST/PUT/PATCH request and make its best guess as to the type of parameter object it should generate. It will also generate the path parameters if your route contains them. Finally, this package will also scan any documentation you have in your action methods and add it as summary and description to that path, along with any appropriate annotations such as @deprecated.
-
-One thing to note is this library leans on being explicit. It will choose to include keys even if they have a default. For example it chooses to say a route has a deprecated value of false rather than leaving it out. I believe this makes reading the documentation easier by not leaving important information out. The file can be easily cleaned up afterwards if the user chooses to leave out the defaults.
+Laravel Auto Swagger Docs works based on recommended practices by Laravel. It will parse your routes and generate a path object for each one. If you inject Form Request classes in your controller's actions as request validation, it will also generate the parameters for each request that has them. For the parameters, it will take into account whether the request is a GET/HEAD/DELETE or a POST/PUT/PATCH request and make its best guess as to the type of parameter object it should generate. It will also generate the path parameters if your route contains them. Finally, this package will also scan any documentation you have in your action methods and add it as summary and description to that path, along with any appropriate annotations such as `@deprecated`.
 
 ### Command line
 
-Generating the swagger documentation is easy, simply run `php artisan swagger:generate` in your project root. The output of the command will be stored in your storage path linked in config file.
+Generating the swagger documentation is easy, simply run `php artisan swagger:generate` in your project root. The output of the command will be stored in your storage path linked in the config file.
 
 If you wish to generate docs for a subset of your routes, you can pass a filter using `--filter`, for example: `php artisan swagger:generate --filter="/api"`
 
-You can also configure your swagger.php file to always generate schema when accessing Swagger UI or just by adding this line in your .env: `SWAGGER_GENERATE_ALWAYS=true`
+You can also configure your `swagger.php` file to always regenerate when accessing Swagger UI, or by adding this line in your `.env`: `SWAGGER_GENERATE_ALWAYS=true`
 
-By default, laravel-swagger prints out the documentation in json format, if you want it in YAML format you can override the format using the `--format` flag. Make sure to have the yaml extension installed if you choose to do so.
+By default, the package prints documentation in JSON format. If you want YAML format, override it using the `--format` flag. Make sure to have the yaml extension installed if you choose to do so.
 
 Format options are:
 
 - `json`
 - `yaml`
+
+> [!NOTE]
+> During generation the command will print yellow warnings in the terminal for any issues found (such as undefined tags or unreferenced schemas). These are also written to the Laravel log. See the [Developer Warnings](#developer-warnings) section for details.
+
+---
 
 ### Annotations syntax
 
@@ -67,169 +71,465 @@ The annotations are written in the PHPDoc block of your controller methods. The 
  *    "description": "This is a longer description for the route which will be visible once the panel is expanded",
  *    "tags": ["Authentication","Users"]
  * })
- * 
  */
 ```
 
-The syntax is basically a JSON inside a comment block. Just be aware to follow strictly the JSON syntax.
+The syntax is basically JSON inside a comment block. Follow the JSON syntax strictly.
 
-#### Rules
+---
 
-- The `key: value` pairs must be separated by a column `:`
-- The `key: value` pairs must be always in the same line. If you want a longer description,
-you can write it in the comment itself that this description will be used as the description
-of the route. You can see the example in the `@Request()` decorator.
-- When you need to use an array, you can use the square brackets `[]` to define it as in JSON.
+## @Request() decorator
 
-### @Request() decorator
-
-You can have only one `@Request()` decorator.
+You can have only one `@Request()` decorator per method.
 
 ```php
 /**
-* You can also do this, first line will be "summary"
-*
-* And anything 1 * apart from the "summary" will count as "description"
-*
-* @Request({
-*     "summary": "Title of the route", // <- If you add here, this will overwrite the summary from above.
-*     "description": "A short description", // <- If you need a longer one, just use the comment itself
-*     "tags": ["Authentication","Users"] // <- This Request will be used in this two tags section
-* })
-*/
+ * You can also do this — the first line will be used as "summary"
+ *
+ * Anything after the first blank line counts as "description".
+ *
+ * @Request({
+ *     "summary": "Title of the route",       // <- Overwrites the summary above if provided
+ *     "description": "A short description",  // <- Overwrites description above if provided
+ *     "tags": ["Authentication","Users"],      // <- Associates this operation with these tag sections
+ *     "pathParams": [{                         // <- Overwrites auto-generated path parameter definitions
+ *         "name": "user_id",
+ *         "type": "string",
+ *         "description": "User ID to fetch",
+ *     }]
+ * })
+ */
+public function someMethod(Request $request, string $reference) {}
+```
+
+### Supported @Request keys
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `summary` | string | Short title of the operation |
+| `description` | string | Longer description (also readable from the plain docblock text) |
+| `tags` | string[] | Tags this operation belongs to. If omitted, the tag is inferred from the route prefix or controller name depending on `default_tags_generation_strategy` |
+| `operationId` | string | Explicit `operationId` for the operation |
+| `pathParams` | object | Override path parameter definitions for the route |
+
+---
+
+## @Response() decorator
+
+You can have multiple `@Response()` decorators on the same method.
+
+```php
+/**
+ * @Response({
+ *     "code": 200,
+ *     "description": "Return user model",
+ *     "ref": "User"
+ * })
+ * @Response({
+ *     "code": 400,
+ *     "description": "Bad Request",
+ *     "ref": "APIError[]"
+ * })
+ * @Response({
+ *     "code": "302",
+ *     "description": "Redirect"
+ * })
+ * @Response({
+ *     "code": 500,
+ *     "description": "Internal Server Error"
+ * })
+ */
 public function someMethod(Request $request) {}
 ```
 
-### @Response() decorator
+### Supported @Response keys
 
-You can have multiple `@Response` decorators
+| Key | Type | Description |
+| --- | --- | --- |
+| `code` | int\|string | **Required.** HTTP status code. Must be the first key. |
+| `description` | string | Human-readable description of this response |
+| `ref` | string | Reference to a Schema, an array of schemas, or a schema builder. See below. |
+| `content_type` | string | Content type for this response. Use for non-JSON responses such as file downloads. |
 
-- The `code` property is required and must be the first in property
-- You can use the optional `description` property to describe your response
-- You can use the optional `ref` property to refer a Model or a custom Schema, you can also add an `[]` in the final of the Schema name to refer an array of that Schema or use the full Schema path inside, finally you can use a schema builder
+### `ref` formats
 
 ```php
-/**
-* @Response({
-*     "code": 200,
-*     "description": "Return user model",
-*     "ref": "User"
-* })
-* @Response({
-*     "code": 400,
-*     "description": "Bad Request",
-*     "ref": "APIError[]" // <- An Array of APIError, can be a custom Schema
-* })
-* @Response({
-*     "code": "302",
-*     "description": "Redirect"
-* })
-* @Response({
-*     "code": 500,
-*     "description": "Internal Server Error"
-* })
-*/
-public function someMethod(Request $request) {}
-
-/**
- * You can also refer object directly
- * 
- * 
- * @Response({
- *     "code": 200,
- *     "description": "Direct user model reference",
- *     "ref": "#/components/schemas/User" // <- Full Schema path
- * })
- */
-public function someMethod2(Request $request) {}
-
-/**
- * Using P schema builder for Laravel Pagination
- * 
- * @Response({
- *     "code": 200,
- *     "description": "A laravel pagination instance with User model",
- *     "ref": "P(User)" // <- Using Schema Builder
- * })
- */
-public function someMethod3(Request $request) {}
+"ref": "User"              // <- Refers to the User schema
+"ref": "APIError[]"        // <- Array of APIError schemas
+"ref": "#/components/schemas/User"  // <- Full OpenAPI path
+"ref": "P(User)"           // <- Schema builder (Laravel Pagination wrapping User)
+"ref": "SP(User)"          // <- Schema builder (Laravel SimplePaginate wrapping User)
 ```
 
 > [!NOTE]
-> You can see all available schema builder or create your own schema builder, explore swagger.schema_builders config for more information
+> See all available schema builders or create your own — explore `swagger.schema_builders` in the config.
 
-### Custom Validators
+### Binary / file download responses
 
-These validators are made purely for visual purposes, however, some of them can actually do validation. But where to insert it? You can simply insert it in the `rules` array in your Form Request class like a normal Laravel validation.
-
-#### swagger_default
-
-It sets the default value for the parameter in the documentation
+Use `content_type` to declare a non-JSON response body (e.g. PDF, CSV, image):
 
 ```php
-$rules = [
-    'locale'        =>  'swagger_default:en_GB'
-];
+/**
+ * @Response({"code": 200, "description": "PDF ticket.", "content_type": "application/pdf"})
+ * @Response({"code": 401, "description": "Unauthorized."})
+ */
+public function download(): Response {}
 ```
 
-#### swagger_example
+### Multiple content types for the same status code
 
-It sets the example value for the parameter in the documentation
+You can stack multiple `@Response` decorators with the same code to declare several content types. Each adds its own entry under the response without overwriting the others:
 
 ```php
-$rules = [
-    'currency'        =>  'swagger_example:EUR'
-];
+/**
+ * @Response({"code": 200, "description": "Export result.", "content_type": "application/pdf"})
+ * @Response({"code": 200, "content_type": "text/csv"})
+ * @Response({"code": 401, "description": "Unauthorized."})
+ */
+public function export(): Response {}
 ```
 
 > [!NOTE]
-> The difference between `swagger_default` and `swagger_example` is that
-> `swagger_default` will inform to the user that this value is the default value
-> for this parameter inside the application. `swagger_example` will just illustrate
-> an example of how the parameter should be filled.
+> The `description` is taken from the first `@Response` that declares it for a given code.
+> For multiple content types without `content_type`, use `ref` on each to point to different schemas.
 
-#### swagger_description
+---
 
-It sets the description for the parameter in the documentation
+## Custom Validators (Form Request rules)
+
+These rules are added directly to your Form Request `rules()` array. They are purely for documentation purposes — they do not affect Laravel's validation behaviour (except `swagger_min` and `swagger_max` which optionally can).
+
+> [!NOTE]
+> These rules are registered by the package's service provider. There is no extra setup required.
+
+> [!NOTE]
+> When a Form Request produces at least one visible parameter, the generated `requestBody` is automatically marked as `required: true` in the spec. If all fields are hidden via `swagger_hidden`, no `requestBody` is emitted at all.
+
+#### swagger_hidden
+
+Completely hides a field (and any of its nested children) from the generated documentation. Useful for internal fields or fields only used for conditional logic.
 
 ```php
 $rules = [
-    'limit'         =>  'swagger_description:Limit the number of items to return'
+    'internal_token' => 'swagger_hidden',
+    'internal_token.value' => 'string', // also hidden because parent is hidden
 ];
 ```
 
 #### swagger_required
 
-It sets the required status for the parameter in the documentation without affecting the validation rules.
-It's useful if you have a parameter that is conditionally required based on other parameters.
+Overrides the required status for a parameter in the documentation, independently of the actual Laravel validation rule. Useful when a field is conditionally required at runtime but should always appear as required (or optional) in the docs.
 
 ```php
 $rules = [
-    'limit'         =>  [
+    'limit' => [
         $condition ? 'required' : 'nullable',
-        'swagger_required:false'
-    ]
+        'swagger_required:true',   // always show as required in docs
+    ],
+    'cursor' => [
+        'required',
+        'swagger_required:false',  // always show as optional in docs
+    ],
+];
+```
+
+#### swagger_default
+
+Sets the default value shown for the parameter in the documentation.
+
+```php
+$rules = [
+    'locale' => 'swagger_default:en_GB',
+];
+```
+
+#### swagger_example
+
+Sets an example value for the parameter in the documentation.
+
+```php
+$rules = [
+    'currency' => 'swagger_example:EUR',
+];
+```
+
+> [!NOTE]
+> `swagger_default` communicates that the application uses this value when the field is absent.
+> `swagger_example` just illustrates how the field should be filled — it has no runtime meaning.
+
+#### swagger_description
+
+Sets the description text for the parameter in the documentation.
+
+```php
+$rules = [
+    'limit' => 'swagger_description:Maximum number of items to return',
 ];
 ```
 
 #### swagger_min
 
+Documents a minimum value. Optionally also enforces it at runtime by appending `:fail`.
+
 ```php
 $rules = [
-    // This will simply display the 'minimum' value in the documentation
-    'page'          =>  'swagger_default:1|swagger_min:1', 
-    // This will also fail if the `page` parameter will be less than 1
-    'page'          =>  'swagger_default:1|swagger_min:1:fail'
+    'page' => 'swagger_default:1|swagger_min:1',         // docs only
+    'page' => 'swagger_default:1|swagger_min:1:fail',    // docs + enforced
 ];
 ```
 
 #### swagger_max
 
+Documents a maximum value. Optionally also enforces it at runtime by appending `:fail`.
+
 ```php
 $rules = [
-    // This will simply display the 'maximum' value in the documentation
-    'take'          =>  'swagger_default:1|swagger_min:1|swagger_max:50',
-    // This will also fail if the `take` parameter will be greater than 50
-    'take'          =>  'swagger_default:1|swagger_min:1|swagger_max:50:fail'
+    'take' => 'swagger_default:10|swagger_min:1|swagger_max:50',       // docs only
+    'take' => 'swagger_default:10|swagger_min:1|swagger_max:50:fail',  // docs + enforced
 ];
 ```
+
+### Automatic type inference from Laravel rules
+
+The package reads standard Laravel validation rules to automatically infer OpenAPI types and formats:
+
+| Laravel rule | OpenAPI type | OpenAPI format / keyword |
+| --- | --- | --- |
+| `integer` | `integer` | — |
+| `numeric` | `number` | — |
+| `boolean` | `boolean` | — |
+| `array` | `array` | — |
+| `file`, `image`, `mimes`, `mimetypes` | `string` | `binary` |
+| `date` | `string` | `date` |
+| `after`, `before`, `after_or_equal`, `before_or_equal` | `string` | `date` |
+| `email` | `string` | `email` |
+| `uuid` | `string` | `uuid` |
+| `url` | `string` | `uri` |
+| `ip` | `string` | `ip` |
+| `ipv4` | `string` | `ipv4` |
+| `ipv6` | `string` | `ipv6` |
+| `json` | `string` | `json` |
+| `password` | `string` | `password` |
+| `nullable` | adds `nullable: true` | — |
+| `in:a,b,c` | adds `enum: [a, b, c]` | — |
+| `min` / `max` on strings | adds `minLength` / `maxLength` | — |
+| `min` / `max` on integers or numbers | adds `minimum` / `maximum` | — |
+| `multiple_of:n` on integers or numbers | adds `multipleOf` | — |
+| `regex:pattern` | adds `pattern` | — |
+
+---
+
+## Custom Schemas
+
+Custom Schema classes let you define reusable OpenAPI schemas that are not tied to an Eloquent model. They are plain PHP classes with typed properties and optional `@Schema` / `@Property` docblock annotations.
+
+### Setup
+
+Create your schema classes inside the folder configured in `swagger.schemas` (default: `app/Swagger/Schemas`). Each class in that folder (and any subdirectories) is automatically discovered and registered in `components.schemas`.
+
+```php
+// app/Swagger/Schemas/Address.php
+namespace App\Swagger\Schemas;
+
+class Address
+{
+    public string  $street;
+    public string  $city;
+    public ?string $state;
+    public string  $zip_code;
+    public string  $country;
+}
+```
+
+The property names become the schema property names. PHP types are automatically mapped to OpenAPI types:
+
+| PHP type | OpenAPI type |
+| --- | --- |
+| `string` | `string` |
+| `int` | `integer` |
+| `float` | `number` |
+| `bool` | `boolean` |
+| `array` | `array` |
+| `DateTime`, `DateTimeImmutable`, `DateTimeInterface` | `string` + `format: date-time` |
+| `?type` (nullable) | type + `nullable: true` |
+
+#### DateTime auto-inference
+
+When a property's PHP type is `DateTime`, `DateTimeImmutable`, `DateTimeInterface`, or any class that implements `DateTimeInterface` (including Carbon), the package automatically sets `type: string` and `format: date-time` — no annotation needed:
+
+```php
+class FlightSchedule
+{
+    public \DateTime          $scheduled_at;   // → type: string, format: date-time
+    public \DateTimeImmutable $completed_at;   // → type: string, format: date-time
+    public ?\DateTimeInterface $cancelled_at;  // → type: string, format: date-time, nullable: true
+    public ?string            $note;           // → type: string, nullable: true
+}
+```
+
+#### Static properties as examples
+
+If a property is declared `static` with a default value, that value is used as the `example` in the generated schema:
+
+```php
+class FlightSegment
+{
+    static string $origin_code = 'GRU';        // → example: "GRU"
+    static int    $duration_minutes = 390;     // → example: 390
+}
+```
+
+---
+
+### @Schema annotation
+
+Use `@Schema` on the class to declare which properties are required in the OpenAPI schema. Only fields that exist as properties on the class are included in the `required` array.
+
+```php
+/**
+ * @Schema({
+ *     "required": ["street", "city", "zip_code", "country"]
+ * })
+ */
+class Address
+{
+    public string  $street;
+    public string  $city;
+    public ?string $state;
+    public string  $zip_code;
+    public string  $country;
+}
+```
+
+---
+
+### @Property annotation
+
+Use `@Property` on individual properties to override or extend the automatically inferred type information.
+
+```php
+class FlightSegment
+{
+    /**
+     * @Property({"enum": ["economy", "business", "first"]})
+     */
+    static string $cabin_class = 'economy';
+```
+
+#### Supported @Property keys
+
+| Key | Description |
+| --- | --- |
+| `type` | Overrides the inferred OpenAPI type (`string`, `integer`, `number`, `boolean`, `array`, `object`) |
+| `format` | Sets the OpenAPI format (e.g. `date`, `date-time`, `uuid`, `uri`, `binary`) |
+| `description` | Description text for this property |
+| `example` | Example value (overrides the static default if present) |
+| `nullable` | `true` to mark the property as nullable |
+| `enum` | Array of allowed values, e.g. `["active", "inactive"]` |
+| `deprecated` | `true` to mark the property as deprecated |
+| `arrayOf` | When `type` is `array`, defines the item type, e.g. `"arrayOf": "integer"` |
+| `ref` | Reference to another schema. Supports the same formats as `@Response` `ref` |
+| `raw` | Injects a raw OpenAPI property object verbatim, bypassing all other inference |
+
+#### @Property `ref` examples
+
+```php
+/**
+ * @Property({"ref": "FlightDetails"})          // $ref to FlightDetails
+ * @Property({"ref": "FlightSegment[]"})         // array of FlightSegments
+ * @Property({"ref": "FlightDetails", "nullable": true, "description": "Optional detail"})
+ */
+```
+
+When both `ref` and `nullable` or `description` are present, the output uses `allOf` to comply with the OpenAPI spec:
+
+```json
+{
+  "description": "Optional detail",
+  "nullable": true,
+  "allOf": [{ "$ref": "#/components/schemas/FlightDetails" }]
+}
+```
+
+#### @Property `raw` — verbatim injection
+
+Use `raw` when you need full control and none of the other keys are sufficient:
+
+```php
+/**
+ * @Property({"raw": {"type": "string", "format": "uri"}})
+ */
+static string $booking_url = 'https://example.com';
+```
+
+---
+
+### Multiple schemas directories
+
+The `schemas` key in each page config accepts either a single path or an array of paths. This is useful for modularized projects:
+
+```php
+// config/swagger.php (inside a page entry)
+'schemas' => [
+    app_path('Swagger/Schemas'),
+    base_path('modules/Orders/Swagger/Schemas'),
+    base_path('modules/Auth/Swagger/Schemas'),
+],
+```
+
+---
+
+## Tags
+
+### Automatic tag generation
+
+Tags are generated automatically based on the `default_tags_generation_strategy` page config:
+
+| Strategy | Behaviour |
+| --- | --- |
+| `prefix` | Uses the first segment of the route URI (e.g. `/users/profile` → tag `users`) |
+| `controller` | Derives the tag from the controller class name (e.g. `UserController` → tag `User`) |
+| _(anything else)_ | No tag is added — all operations fall into the default group |
+
+You can always override the auto-generated tag per operation using the `tags` key in `@Request`.
+
+### Declaring global tags
+
+Define global tags in the page config to attach descriptions to each tag group. These appear in Swagger UI's sidebar:
+
+```php
+// config/swagger.php (inside a page entry)
+'tags' => [
+    ['name' => 'Users',           'description' => 'Operations related to users'],
+    ['name' => 'Authentication',  'description' => 'Login, logout, and token refresh'],
+    ['name' => 'Flights',         'description' => 'Flight search and booking'],
+],
+```
+
+---
+
+## Developer Warnings
+
+During `swagger:generate`, the package prints warnings to the terminal (in yellow, using Laravel's `$this->warn()`) and to the Laravel log whenever it detects issues worth your attention. Nothing breaks — these are advisory only.
+
+### Undefined tag warning
+
+Fires when an operation uses a tag that is **not declared in the global `tags` array**. Only active when at least one global tag is configured (if `tags` is empty, the check is skipped entirely to avoid noise on unconfigured projects).
+
+```
+[AutoSwagger/Docs] Tag 'bookings' is used in an operation but is not defined in the global
+tags array. Add it to the 'tags' key in your config/swagger.php to include a description.
+```
+
+**Fix:** add the missing tag to the `tags` array in your page config, or remove the `tags` entry from the `@Request` annotation if it was a typo.
+
+### Unreferenced custom schema warning
+
+Fires when a class from your `schemas` folder is generated into `components.schemas` but never referenced by any `$ref` anywhere in the documentation (neither in a path operation response nor in another schema's properties). Eloquent model schemas are excluded from this check — it only applies to classes you explicitly placed in the schemas folder.
+
+```
+[AutoSwagger/Docs] Schema 'LegacyPayload' is defined but never referenced in any operation.
+Consider removing it or referencing it via @Response or @Property.
+```
+
+**Fix:** either delete the unused schema class, or add a `@Response` with `"ref": "LegacyPayload"` to the relevant controller methods.
