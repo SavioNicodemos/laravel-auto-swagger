@@ -77,7 +77,7 @@ class Generator
      * Set a callback that writes warning messages to the terminal.
      * Intended for CLI commands: ->setConsoleOutput(fn($msg) => $this->warn($msg))
      */
-    public function setConsoleOutput(\Closure $output): static
+    public function setConsoleOutput(\Closure $output): self
     {
         $this->consoleOutput = $output;
         return $this;
