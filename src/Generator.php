@@ -684,7 +684,7 @@ class Generator
     /**
      * Recursively collect all schema names referenced via $ref in the documentation.
      */
-    private function collectReferencedSchemas(mixed $data, array &$referencedSchemas): void
+    private function collectReferencedSchemas($data, array &$referencedSchemas): void
     {
         if (!is_array($data) && !is_object($data)) {
             return;
